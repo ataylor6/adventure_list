@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.idea/
+.vscode/
+mobile/expo-env.d.ts
