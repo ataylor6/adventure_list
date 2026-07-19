@@ -24,7 +24,19 @@
     "plugins": [
       "expo-router",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Adventure List to access your photos so you can share adventures."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Adventure List to turn photo GPS into a place name."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
