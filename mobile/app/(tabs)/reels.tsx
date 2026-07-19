@@ -8,10 +8,10 @@ export default function ReelsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.content}>
-        <Ionicons name="play-circle-outline" size={56} color={Colors.text} />
-        <Text style={styles.title}>Reels</Text>
+        <Ionicons name="location-outline" size={56} color={Colors.text} />
+        <Text style={styles.title}>Nearby</Text>
         <Text style={styles.body}>
-          Vertical short-form feed stub — add a paging FlatList + video player here.
+          Map / nearby adventures stub — wire this up next.
         </Text>
       </View>
     </SafeAreaView>

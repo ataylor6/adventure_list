@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { useAppMode } from '@/context/AppModeContext';
@@ -25,9 +25,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
+          title: 'Explore',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'globe' : 'globe-outline'} size={26} color={color} />
           ),
         }}
       />
@@ -44,21 +44,19 @@ export default function TabLayout() {
         name="create"
         options={{
           title: 'Create',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="add-circle-outline" size={28} color={color} />
+          tabBarIcon: () => (
+            <View style={styles.createBtn}>
+              <Ionicons name="add" size={32} color={Colors.cream} />
+            </View>
           ),
         }}
       />
       <Tabs.Screen
         name="reels"
         options={{
-          title: 'Reels',
+          title: 'Nearby',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'play-circle' : 'play-circle-outline'}
-              size={26}
-              color={color}
-            />
+            <Ionicons name={focused ? 'location' : 'location-outline'} size={26} color={color} />
           ),
         }}
       />
@@ -67,11 +65,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'person-circle' : 'person-circle-outline'}
-              size={28}
-              color={color}
-            />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={26} color={color} />
           ),
         }}
       />
@@ -81,10 +75,29 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    borderTopColor: Colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    height: 84,
-    paddingTop: 8,
-    backgroundColor: Colors.background,
+    borderTopColor: 'transparent',
+    borderTopWidth: 0,
+    height: 88,
+    paddingTop: 10,
+    paddingBottom: 18,
+    backgroundColor: Colors.tabBar,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  createBtn: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    marginTop: -18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accent,
+    shadowColor: Colors.accentGlow,
+    shadowOpacity: 0.85,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
 });
