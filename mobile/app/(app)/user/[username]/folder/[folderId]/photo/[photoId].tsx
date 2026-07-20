@@ -357,7 +357,7 @@ export default function PhotoDetailScreen() {
 
             <Text style={styles.label}>Description</Text>
             <TextInput
-              style={[styles.input, styles.inputMultiline]}
+              style={[styles.input, styles.inputMultiline, styles.descriptionInput]}
               value={editDescription}
               onChangeText={setEditDescription}
               placeholder="What made this adventure stick?"
@@ -366,41 +366,45 @@ export default function PhotoDetailScreen() {
               textAlignVertical="top"
             />
 
-            <Text style={styles.label}>Stayed</Text>
-            <TextInput
-              style={styles.input}
-              value={editStayed}
-              onChangeText={setEditStayed}
-              placeholder="Where did you stay?"
-              placeholderTextColor="#8A837A"
-            />
+            <View style={styles.adventureSection}>
+              <Text style={styles.adventureSectionTitle}>This adventure</Text>
 
-            <Text style={styles.label}>At</Text>
-            <TextInput
-              style={styles.input}
-              value={editAt}
-              onChangeText={setEditAt}
-              placeholder="Where were you?"
-              placeholderTextColor="#8A837A"
-            />
+              <Text style={styles.label}>Stayed</Text>
+              <TextInput
+                style={[styles.input, styles.adventureInput]}
+                value={editStayed}
+                onChangeText={setEditStayed}
+                placeholder="Where did you stay?"
+                placeholderTextColor="#8A837A"
+              />
 
-            <Text style={styles.label}>Listened to</Text>
-            <TextInput
-              style={styles.input}
-              value={editListenedTo}
-              onChangeText={setEditListenedTo}
-              placeholder="What was playing?"
-              placeholderTextColor="#8A837A"
-            />
+              <Text style={styles.label}>At</Text>
+              <TextInput
+                style={[styles.input, styles.adventureInput]}
+                value={editAt}
+                onChangeText={setEditAt}
+                placeholder="Where were you?"
+                placeholderTextColor="#8A837A"
+              />
 
-            <Text style={styles.label}>Wore</Text>
-            <TextInput
-              style={styles.input}
-              value={editWore}
-              onChangeText={setEditWore}
-              placeholder="What did you wear?"
-              placeholderTextColor="#8A837A"
-            />
+              <Text style={styles.label}>Listened to</Text>
+              <TextInput
+                style={[styles.input, styles.adventureInput]}
+                value={editListenedTo}
+                onChangeText={setEditListenedTo}
+                placeholder="What was playing?"
+                placeholderTextColor="#8A837A"
+              />
+
+              <Text style={styles.label}>Wore</Text>
+              <TextInput
+                style={[styles.input, styles.adventureInput]}
+                value={editWore}
+                onChangeText={setEditWore}
+                placeholder="What did you wear?"
+                placeholderTextColor="#8A837A"
+              />
+            </View>
 
             <Pressable style={styles.actionBtn} onPress={onSaveEdits}>
               <Text style={styles.actionBtnText}>Save changes</Text>
@@ -415,8 +419,8 @@ export default function PhotoDetailScreen() {
                   if (!meta) return null;
                   return (
                     <View key={tagId} style={styles.tagChipReadonly}>
-                      <Ionicons name={meta.icon} size={14} color={Colors.card} />
-                      <Text style={styles.tagChipText}>{meta.label}</Text>
+                      <Ionicons name={meta.icon} size={14} color={Colors.text} />
+                      <Text style={styles.tagChipReadonlyText}>{meta.label}</Text>
                     </View>
                   );
                 })}
@@ -424,14 +428,14 @@ export default function PhotoDetailScreen() {
             ) : null}
 
             {hasDescription ? (
-              <View style={styles.section}>
+              <View style={[styles.section, styles.descriptionSection]}>
                 <Text style={styles.sectionTitle}>Description</Text>
                 <Text style={styles.description}>{photo.description}</Text>
               </View>
             ) : null}
 
             {hasExtras ? (
-              <View style={styles.section}>
+              <View style={[styles.section, styles.descriptionSection]}>
                 <Text style={styles.sectionTitle}>This adventure</Text>
                 <DetailRow label="Stayed" value={photo.stayed} />
                 <DetailRow label="At" value={photo.at} />
@@ -734,8 +738,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 0, 0, 0.12)',
   },
   tagChipActive: {
-    backgroundColor: Colors.card,
-    borderColor: Colors.card,
+    backgroundColor: Colors.accentBlue,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.15)',
   },
   tagChipReadonly: {
     flexDirection: 'row',
@@ -744,9 +749,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: 'rgba(247, 244, 238, 0.85)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.12)',
+    backgroundColor: Colors.accentBlue,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.15)',
   },
   tagChipText: {
     fontSize: 13,
@@ -754,13 +759,23 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   tagChipTextActive: {
-    color: Colors.cream,
+    color: Colors.text,
+  },
+  tagChipReadonlyText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
   },
   section: {
     backgroundColor: 'rgba(247, 244, 238, 0.9)',
     borderRadius: 16,
     padding: 16,
     gap: 10,
+  },
+  descriptionSection: {
+    backgroundColor: Colors.accentBlueFaded,
+    borderWidth: 1,
+    borderColor: Colors.accentBlueFadedBorder,
   },
   sectionTitle: {
     fontSize: 13,
@@ -829,6 +844,31 @@ const styles = StyleSheet.create({
     minHeight: 96,
     paddingTop: 12,
     paddingBottom: 12,
+  },
+  descriptionInput: {
+    backgroundColor: Colors.accentBlueFaded,
+    borderColor: Colors.accentBlueFadedBorder,
+  },
+  adventureSection: {
+    marginTop: 4,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: Colors.accentBlueFaded,
+    borderWidth: 1,
+    borderColor: Colors.accentBlueFadedBorder,
+    gap: 2,
+  },
+  adventureSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  adventureInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderColor: Colors.accentBlueFadedBorder,
   },
   headerActionText: {
     fontSize: 15,

@@ -12,6 +12,8 @@ export const Colors = {
   accentGlow: '#A8D06C',
   accentBlue: '#5AC8FA',
   accentBlueGlow: '#7DD3FC',
+  accentBlueFaded: 'rgba(90, 200, 250, 0.12)',
+  accentBlueFadedBorder: 'rgba(90, 200, 250, 0.28)',
   border: '#DBDBDB',
   heart: '#ED4956',
   link: '#00376B',
