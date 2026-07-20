@@ -16,6 +16,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
 import { useFeed } from '@/context/FeedContext';
+import { SaveToWishlistModal } from '@/components/SaveToWishlistModal';
+import { MissingState } from '@/components/MissingState';
+import { UserContentHeader } from '@/components/UserContentHeader';
+import {
+  ADVENTURE_CATEGORIES,
+  type AdventureCategory,
+} from '@/constants/adventureFeed';
 
 function DetailRow({ label, value }: { label: string; value?: string }) {
   if (!value?.trim()) return null;
@@ -34,11 +41,30 @@ export default function PhotoDetailScreen() {
     folderId: string;
     photoId: string;
   }>();
-  const { user, myFolders, resolvePhoto, movePhoto, deletePhoto, createFolder } = useFeed();
+  const {
+    user,
+    posts,
+    myFolders,
+    resolvePhoto,
+    movePhoto,
+    deletePhoto,
+    updatePhoto,
+    createFolder,
+    isPhotoInWishlist,
+  } = useFeed();
   const [selectedFolderId, setSelectedFolderId] = useState(folderId ?? '');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [creatingNew, setCreatingNew] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState('');
+  const [wishlistOpen, setWishlistOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editLocation, setEditLocation] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editStayed, setEditStayed] = useState('');
+  const [editAt, setEditAt] = useState('');
+  const [editListenedTo, setEditListenedTo] = useState('');
+  const [editWore, setEditWore] = useState('');
+  const [editTags, setEditTags] = useState<AdventureCategory[]>([]);
 
   const data = resolvePhoto(username ?? '', folderId ?? '', photoId ?? '');
   const isOwn = (username ?? '').toLowerCase() === user.username.toLowerCase();
@@ -47,15 +73,18 @@ export default function PhotoDetailScreen() {
     return myFolders.find((f) => f.id === selectedFolderId)?.title ?? data?.folder.title ?? 'Album';
   }, [myFolders, selectedFolderId, data?.folder.title]);
 
+  const photoTags = useMemo(() => {
+    if (!data) return [] as AdventureCategory[];
+    const fromFeed = posts.find((p) => p.id === data.photo.id)?.tags;
+    return fromFeed ?? data.photo.tags ?? [];
+  }, [data, posts]);
+
   if (!data) {
-    return (
-      <View style={styles.missing}>
-        <Text style={styles.missingText}>Photo not found</Text>
-      </View>
-    );
+    return <MissingState title="Photo not found" message="This post is unavailable." />;
   }
 
   const { photo, profile } = data;
+  const inWishlist = isPhotoInWishlist(photo.id);
   const hasDescription = Boolean(photo.description?.trim());
   const hasExtras = Boolean(
     photo.stayed?.trim() ||
@@ -63,6 +92,50 @@ export default function PhotoDetailScreen() {
       photo.listenedTo?.trim() ||
       photo.wore?.trim(),
   );
+
+  const startEditing = () => {
+    setEditLocation(photo.location ?? '');
+    setEditDescription(photo.description ?? '');
+    setEditStayed(photo.stayed ?? '');
+    setEditAt(photo.at ?? '');
+    setEditListenedTo(photo.listenedTo ?? '');
+    setEditWore(photo.wore ?? '');
+    setEditTags(photoTags);
+    setEditing(true);
+  };
+
+  const toggleEditTag = (id: AdventureCategory) => {
+    setEditTags((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+  };
+
+  const onSaveEdits = () => {
+    if (!editLocation.trim()) {
+      Alert.alert('Location required', 'Add a location for this adventure.');
+      return;
+    }
+    if (editTags.length === 0) {
+      Alert.alert('Tags required', 'Choose at least one tag.');
+      return;
+    }
+    const ok = updatePhoto(photo.id, folderId ?? '', {
+      location: editLocation,
+      description: editDescription,
+      stayed: editStayed,
+      at: editAt,
+      listenedTo: editListenedTo,
+      wore: editWore,
+      tags: editTags,
+    });
+    if (!ok) {
+      Alert.alert('Could not save', 'This post could not be updated.');
+      return;
+    }
+    setEditing(false);
+  };
 
   const onSelectFolder = (id: string) => {
     setSelectedFolderId(id);
@@ -123,16 +196,34 @@ export default function PhotoDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={28} color={Colors.text} />
-        </Pressable>
-        <Text style={styles.topTitle} numberOfLines={1}>
-          @{profile.username}
-        </Text>
-        <View style={styles.backBtn} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <UserContentHeader
+        right={
+          isOwn ? (
+            editing ? (
+              <Pressable onPress={cancelEditing} hitSlop={12} accessibilityLabel="Cancel edit">
+                <Text style={styles.headerActionText}>Cancel</Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={startEditing} hitSlop={12} accessibilityLabel="Edit post">
+                <Ionicons name="create-outline" size={24} color={Colors.text} />
+              </Pressable>
+            )
+          ) : (
+            <Pressable
+              onPress={() => setWishlistOpen(true)}
+              hitSlop={12}
+              accessibilityLabel="Save to trip wishlist"
+            >
+              <Ionicons
+                name={inWishlist ? 'bookmark' : 'bookmark-outline'}
+                size={24}
+                color={Colors.text}
+              />
+            </Pressable>
+          )
+        }
+      />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -145,7 +236,7 @@ export default function PhotoDetailScreen() {
             style={styles.image}
             contentFit="cover"
           />
-          {photo.location ? (
+          {!editing && photo.location ? (
             <View style={styles.locationRow}>
               <Ionicons name="location-sharp" size={16} color={Colors.textOnDark} />
               <Text style={styles.locationText}>{photo.location}</Text>
@@ -154,28 +245,155 @@ export default function PhotoDetailScreen() {
         </View>
 
         <View style={styles.folderChip}>
-          <Ionicons name="folder" size={14} color={Colors.card} />
-          <Text style={styles.folderChipText}>{data.folder.title}</Text>
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: '/user/[username]',
+                params: { username: profile.username },
+              })
+            }
+            hitSlop={6}
+          >
+            <Text style={styles.folderChipText}>@{profile.username}</Text>
+          </Pressable>
+          <Ionicons name="chevron-forward" size={14} color={Colors.card} />
+          <Pressable
+            style={styles.folderChipAlbum}
+            onPress={() =>
+              router.push({
+                pathname: '/user/[username]/folder/[folderId]',
+                params: {
+                  username: profile.username,
+                  folderId: data.folder.id,
+                },
+              })
+            }
+            hitSlop={6}
+          >
+            <Ionicons name="folder" size={14} color={Colors.card} />
+            <Text style={styles.folderChipText}>{data.folder.title}</Text>
+          </Pressable>
         </View>
 
-        {hasDescription ? (
+        {editing ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.description}>{photo.description}</Text>
-          </View>
-        ) : null}
+            <Text style={styles.sectionTitle}>Edit post</Text>
 
-        {hasExtras ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>This adventure</Text>
-            <DetailRow label="Stayed" value={photo.stayed} />
-            <DetailRow label="At" value={photo.at} />
-            <DetailRow label="Listened to" value={photo.listenedTo} />
-            <DetailRow label="Wore" value={photo.wore} />
-          </View>
-        ) : null}
+            <Text style={styles.label}>Location</Text>
+            <TextInput
+              style={styles.input}
+              value={editLocation}
+              onChangeText={setEditLocation}
+              placeholder="Where was this?"
+              placeholderTextColor="#8A837A"
+            />
 
-        {isOwn ? (
+            <Text style={styles.label}>Tags</Text>
+            <View style={styles.tagRow}>
+              {ADVENTURE_CATEGORIES.map((item) => {
+                const active = editTags.includes(item.id);
+                return (
+                  <Pressable
+                    key={item.id}
+                    style={[styles.tagChip, active && styles.tagChipActive]}
+                    onPress={() => toggleEditTag(item.id)}
+                  >
+                    <Text style={[styles.tagChipText, active && styles.tagChipTextActive]}>
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text style={styles.label}>Description</Text>
+            <TextInput
+              style={[styles.input, styles.inputMultiline]}
+              value={editDescription}
+              onChangeText={setEditDescription}
+              placeholder="What made this adventure stick?"
+              placeholderTextColor="#8A837A"
+              multiline
+              textAlignVertical="top"
+            />
+
+            <Text style={styles.label}>Stayed</Text>
+            <TextInput
+              style={styles.input}
+              value={editStayed}
+              onChangeText={setEditStayed}
+              placeholder="Where did you stay?"
+              placeholderTextColor="#8A837A"
+            />
+
+            <Text style={styles.label}>At</Text>
+            <TextInput
+              style={styles.input}
+              value={editAt}
+              onChangeText={setEditAt}
+              placeholder="Where were you?"
+              placeholderTextColor="#8A837A"
+            />
+
+            <Text style={styles.label}>Listened to</Text>
+            <TextInput
+              style={styles.input}
+              value={editListenedTo}
+              onChangeText={setEditListenedTo}
+              placeholder="What was playing?"
+              placeholderTextColor="#8A837A"
+            />
+
+            <Text style={styles.label}>Wore</Text>
+            <TextInput
+              style={styles.input}
+              value={editWore}
+              onChangeText={setEditWore}
+              placeholder="What did you wear?"
+              placeholderTextColor="#8A837A"
+            />
+
+            <Pressable style={styles.actionBtn} onPress={onSaveEdits}>
+              <Text style={styles.actionBtnText}>Save changes</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            {photoTags.length > 0 ? (
+              <View style={styles.tagRow}>
+                {photoTags.map((tagId) => {
+                  const meta = ADVENTURE_CATEGORIES.find((c) => c.id === tagId);
+                  if (!meta) return null;
+                  return (
+                    <View key={tagId} style={styles.tagChipReadonly}>
+                      <Ionicons name={meta.icon} size={14} color={Colors.card} />
+                      <Text style={styles.tagChipText}>{meta.label}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            {hasDescription ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Description</Text>
+                <Text style={styles.description}>{photo.description}</Text>
+              </View>
+            ) : null}
+
+            {hasExtras ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>This adventure</Text>
+                <DetailRow label="Stayed" value={photo.stayed} />
+                <DetailRow label="At" value={photo.at} />
+                <DetailRow label="Listened to" value={photo.listenedTo} />
+                <DetailRow label="Wore" value={photo.wore} />
+              </View>
+            ) : null}
+          </>
+        )}
+
+        {isOwn && !editing ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Album</Text>
             <Text style={styles.helper}>Move this photo to another album</Text>
@@ -234,7 +452,28 @@ export default function PhotoDetailScreen() {
             </Pressable>
           </View>
         ) : null}
+
+        {!isOwn ? (
+          <Pressable style={styles.wishlistBtn} onPress={() => setWishlistOpen(true)}>
+            <Ionicons
+              name={inWishlist ? 'bookmark' : 'bookmark-outline'}
+              size={18}
+              color={Colors.cream}
+            />
+            <Text style={styles.wishlistBtnText}>
+              {inWishlist ? 'Saved to trip wishlist' : 'Save to trip wishlist'}
+            </Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
+
+      <SaveToWishlistModal
+        visible={wishlistOpen}
+        photo={photo}
+        sourceUsername={profile.username}
+        sourceFolderId={folderId}
+        onClose={() => setWishlistOpen(false)}
+      />
 
       <Modal
         visible={dropdownOpen}
@@ -285,23 +524,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-  },
-  backBtn: {
-    width: 40,
-  },
-  topTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 40,
@@ -335,12 +557,56 @@ const styles = StyleSheet.create({
   folderChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingVertical: 4,
+    paddingRight: 4,
+  },
+  folderChipAlbum: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
   },
   folderChipText: {
     fontSize: 13,
     fontWeight: '600',
     color: Colors.card,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tagChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(247, 244, 238, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(60, 42, 30, 0.12)',
+  },
+  tagChipActive: {
+    backgroundColor: Colors.card,
+    borderColor: Colors.card,
+  },
+  tagChipReadonly: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(247, 244, 238, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(60, 42, 30, 0.12)',
+  },
+  tagChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  tagChipTextActive: {
+    color: Colors.cream,
   },
   section: {
     backgroundColor: 'rgba(247, 244, 238, 0.9)',
@@ -411,6 +677,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.text,
   },
+  inputMultiline: {
+    minHeight: 96,
+    paddingTop: 12,
+    paddingBottom: 12,
+  },
+  headerActionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+  },
   input: {
     minHeight: 48,
     borderRadius: 12,
@@ -478,6 +754,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  wishlistBtn: {
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: Colors.card,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  wishlistBtnText: {
+    color: Colors.cream,
+    fontWeight: '700',
+    fontSize: 15,
+  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(20, 16, 12, 0.45)',
@@ -519,15 +809,5 @@ const styles = StyleSheet.create({
   },
   modalRowTextActive: {
     color: Colors.cream,
-  },
-  missing: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.background,
-  },
-  missingText: {
-    color: Colors.textSecondary,
-    fontSize: 16,
   },
 });

@@ -1,3 +1,5 @@
+import type { AdventureCategory } from '@/constants/adventureFeed';
+
 export type FolderPhoto = {
   id: string;
   imageUrl: string;
@@ -7,6 +9,7 @@ export type FolderPhoto = {
   at?: string;
   listenedTo?: string;
   wore?: string;
+  tags?: AdventureCategory[];
 };
 
 export type AdventureFolder = {
@@ -198,6 +201,60 @@ export const PROFILES: Record<string, PublicProfile> = {
           { id: 'm2', imageUrl: img('photo-1516426122078-c23e76319801'), location: 'Maasai Mara, Kenya' },
           { id: 'm3', imageUrl: img('photo-1682687220742-aba63b1d408a'), location: 'Maasai Mara, Kenya' },
           { id: 'm4', imageUrl: img('photo-1614028674026-a65e31bfd27c'), location: 'Maasai Mara, Kenya' },
+        ],
+      },
+    ],
+  },
+  'city.frames': {
+    username: 'city.frames',
+    displayName: 'City Frames',
+    avatarUrl: 'https://i.pravatar.cc/150?u=city',
+    bio: 'Concrete, neon, and early trains',
+    folders: [
+      {
+        id: 'tokyo',
+        title: 'Tokyo',
+        coverUrl: img('photo-1480714378408-67cf0d13bc1b'),
+        photos: [
+          {
+            id: 't1',
+            imageUrl: img('photo-1480714378408-67cf0d13bc1b'),
+            location: 'Tokyo, Japan',
+            description: 'Skyline wash after rain.',
+            stayed: 'Shibuya hotel',
+            at: 'Crossing overlook',
+            listenedTo: 'Station announcements',
+            wore: 'Light jacket, camera always on',
+          },
+          { id: 't2', imageUrl: img('photo-1502602898657-3e91760cbb34'), location: 'Tokyo, Japan' },
+          { id: 't3', imageUrl: img('photo-1514565131-fce0801e5785'), location: 'Tokyo, Japan' },
+        ],
+      },
+    ],
+  },
+  'grid.walk': {
+    username: 'grid.walk',
+    displayName: 'Grid Walk',
+    avatarUrl: 'https://i.pravatar.cc/150?u=nyc',
+    bio: 'Street grids & late light',
+    folders: [
+      {
+        id: 'nyc',
+        title: 'New York',
+        coverUrl: img('photo-1449824913935-59a10b8d2000'),
+        photos: [
+          {
+            id: 'n1',
+            imageUrl: img('photo-1449824913935-59a10b8d2000'),
+            location: 'New York, USA',
+            description: 'Blue hour from the bridge approach.',
+            stayed: "Friend's couch, Brooklyn",
+            at: 'Manhattan skyline',
+            listenedTo: 'Subway rumble',
+            wore: 'Denim + scarf',
+          },
+          { id: 'n2', imageUrl: img('photo-1514565131-fce0801e5785'), location: 'New York, USA' },
+          { id: 'n3', imageUrl: img('photo-1502602898657-3e91760cbb34'), location: 'New York, USA' },
         ],
       },
     ],

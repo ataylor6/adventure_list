@@ -25,7 +25,7 @@ import {
 type NewPostInput = {
   imageUrl: string;
   location: string;
-  category: AdventureCategory;
+  tags: AdventureCategory[];
   folderId: string;
   description?: string;
   stayed?: string;
@@ -34,15 +34,76 @@ type NewPostInput = {
   wore?: string;
 };
 
+/** Snapshot of someone else's album saved to Favorites. */
+export type FavoriteAlbum = {
+  id: string;
+  sourceUsername: string;
+  sourceFolderId: string;
+  title: string;
+  coverUrl: string;
+  photos: FolderPhoto[];
+  savedAt: string;
+};
+
+/** Individual post saved into a trip wishlist album. */
+export type WishlistPhoto = FolderPhoto & {
+  sourceUsername?: string;
+  sourceFolderId?: string;
+};
+
+export type WishlistAlbum = {
+  id: string;
+  title: string;
+  coverUrl: string;
+  photos: WishlistPhoto[];
+};
+
+type PhotoUpdateInput = {
+  location: string;
+  description?: string;
+  stayed?: string;
+  at?: string;
+  listenedTo?: string;
+  wore?: string;
+  tags?: AdventureCategory[];
+};
+
+type ProfileUpdateInput = {
+  displayName?: string;
+  bio?: string;
+  avatarUrl?: string;
+};
+
 type FeedContextValue = {
   user: CurrentUser;
   posts: AdventurePost[];
   myFolders: AdventureFolder[];
   myProfile: PublicProfile;
+  favoriteAlbums: FavoriteAlbum[];
+  wishlistAlbums: WishlistAlbum[];
   addPost: (input: NewPostInput) => AdventurePost;
   createFolder: (title: string) => AdventureFolder;
   movePhoto: (photoId: string, fromFolderId: string, toFolderId: string) => boolean;
   deletePhoto: (photoId: string, folderId: string) => boolean;
+  updatePhoto: (photoId: string, folderId: string, updates: PhotoUpdateInput) => boolean;
+  updateProfile: (updates: ProfileUpdateInput) => void;
+  saveAlbumToFavorites: (username: string, folderId: string) => FavoriteAlbum | null;
+  removeFavoriteAlbum: (favoriteId: string) => boolean;
+  isAlbumFavorited: (username: string, folderId: string) => boolean;
+  createWishlistAlbum: (title: string, initialPhoto?: WishlistPhoto) => WishlistAlbum;
+  savePhotoToWishlist: (
+    photo: FolderPhoto,
+    wishlistId: string,
+    source?: { username?: string; folderId?: string },
+  ) => boolean;
+  removePhotoFromWishlist: (wishlistId: string, photoId: string) => boolean;
+  isPhotoInWishlist: (photoId: string, wishlistId?: string) => boolean;
+  resolveFavoriteAlbum: (favoriteId: string) => FavoriteAlbum | null;
+  resolveWishlistAlbum: (wishlistId: string) => WishlistAlbum | null;
+  resolveWishlistPhoto: (
+    wishlistId: string,
+    photoId: string,
+  ) => { album: WishlistAlbum; photo: WishlistPhoto } | null;
   resolveProfile: (username: string) => PublicProfile | null;
   resolveFolder: (
     username: string,
@@ -72,19 +133,50 @@ function optional(value?: string) {
   return trimmed ? trimmed : undefined;
 }
 
+function defaultWishlistAlbums(): WishlistAlbum[] {
+  return [
+    {
+      id: 'wishlist-default',
+      title: 'Trip wishlist',
+      coverUrl:
+        'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&q=80',
+      photos: [],
+    },
+  ];
+}
+
+function withWishlistCover(album: WishlistAlbum): WishlistAlbum {
+  const coverUrl = album.photos[0]?.imageUrl ?? album.coverUrl;
+  return { ...album, coverUrl };
+}
+
 export function FeedProvider({ children }: { children: ReactNode }) {
   const [posts, setPosts] = useState<AdventurePost[]>(SAMPLE_FEED);
   const [myFolders, setMyFolders] = useState<AdventureFolder[]>(cloneMyFolders);
+  const [favoriteAlbums, setFavoriteAlbums] = useState<FavoriteAlbum[]>([]);
+  const [wishlistAlbums, setWishlistAlbums] = useState<WishlistAlbum[]>(defaultWishlistAlbums);
+  const [displayName, setDisplayName] = useState(CURRENT_USER.displayName);
+  const [avatarUrl, setAvatarUrl] = useState(CURRENT_USER.avatarUrl);
+  const [bio, setBio] = useState(PROFILES.ashtay427?.bio ?? '');
+
+  const user = useMemo<CurrentUser>(
+    () => ({
+      username: CURRENT_USER.username,
+      displayName,
+      avatarUrl,
+    }),
+    [displayName, avatarUrl],
+  );
 
   const myProfile = useMemo<PublicProfile>(
     () => ({
       username: CURRENT_USER.username,
-      displayName: CURRENT_USER.displayName,
-      avatarUrl: CURRENT_USER.avatarUrl,
-      bio: PROFILES.ashtay427?.bio ?? '',
+      displayName,
+      avatarUrl,
+      bio,
       folders: myFolders,
     }),
-    [myFolders],
+    [myFolders, displayName, avatarUrl, bio],
   );
 
   const resolveProfile = useCallback(
@@ -119,45 +211,74 @@ export function FeedProvider({ children }: { children: ReactNode }) {
     [resolveFolder],
   );
 
-  const addPost = useCallback((input: NewPostInput) => {
-    const id = `${Date.now()}`;
-    const post: AdventurePost = {
-      id,
-      imageUrl: input.imageUrl,
-      location: input.location.trim(),
-      username: CURRENT_USER.username,
-      avatarUrl: CURRENT_USER.avatarUrl,
-      category: input.category,
-      description: optional(input.description),
-      stayed: optional(input.stayed),
-      at: optional(input.at),
-      listenedTo: optional(input.listenedTo),
-      wore: optional(input.wore),
-    };
+  const addPost = useCallback(
+    (input: NewPostInput) => {
+      const id = `${Date.now()}`;
+      const tags = [...new Set(input.tags)];
+      const post: AdventurePost = {
+        id,
+        folderId: input.folderId,
+        imageUrl: input.imageUrl,
+        location: input.location.trim(),
+        username: CURRENT_USER.username,
+        avatarUrl,
+        tags,
+        description: optional(input.description),
+        stayed: optional(input.stayed),
+        at: optional(input.at),
+        listenedTo: optional(input.listenedTo),
+        wore: optional(input.wore),
+      };
 
-    const folderPhoto: FolderPhoto = {
-      id,
-      imageUrl: input.imageUrl,
-      location: input.location.trim(),
-      description: optional(input.description),
-      stayed: optional(input.stayed),
-      at: optional(input.at),
-      listenedTo: optional(input.listenedTo),
-      wore: optional(input.wore),
-    };
+      const folderPhoto: FolderPhoto = {
+        id,
+        imageUrl: input.imageUrl,
+        location: input.location.trim(),
+        description: optional(input.description),
+        stayed: optional(input.stayed),
+        at: optional(input.at),
+        listenedTo: optional(input.listenedTo),
+        wore: optional(input.wore),
+        tags,
+      };
 
-    setPosts((prev) => [post, ...prev]);
-    setMyFolders((prev) =>
-      prev.map((folder) => {
-        if (folder.id !== input.folderId) return folder;
-        return withUpdatedCover({
-          ...folder,
-          photos: [folderPhoto, ...folder.photos],
-        });
-      }),
-    );
+      setPosts((prev) => [post, ...prev]);
+      setMyFolders((prev) =>
+        prev.map((folder) => {
+          if (folder.id !== input.folderId) return folder;
+          return withUpdatedCover({
+            ...folder,
+            photos: [folderPhoto, ...folder.photos],
+          });
+        }),
+      );
 
-    return post;
+      return post;
+    },
+    [avatarUrl],
+  );
+
+  const updateProfile = useCallback((updates: ProfileUpdateInput) => {
+    if (updates.displayName !== undefined) {
+      const next = updates.displayName.trim() || CURRENT_USER.displayName;
+      setDisplayName(next);
+    }
+    if (updates.bio !== undefined) {
+      setBio(updates.bio.trim());
+    }
+    if (updates.avatarUrl !== undefined) {
+      const next = updates.avatarUrl.trim();
+      if (next) {
+        setAvatarUrl(next);
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.username.toLowerCase() === CURRENT_USER.username.toLowerCase()
+              ? { ...p, avatarUrl: next }
+              : p,
+          ),
+        );
+      }
+    }
   }, []);
 
   const createFolder = useCallback((title: string) => {
@@ -202,6 +323,12 @@ export function FeedProvider({ children }: { children: ReactNode }) {
       });
     });
 
+    if (success) {
+      setPosts((prev) =>
+        prev.map((p) => (p.id === photoId ? { ...p, folderId: toFolderId } : p)),
+      );
+    }
+
     return success;
   }, []);
 
@@ -228,28 +355,259 @@ export function FeedProvider({ children }: { children: ReactNode }) {
     return removed;
   }, []);
 
+  const updatePhoto = useCallback((photoId: string, folderId: string, updates: PhotoUpdateInput) => {
+    const location = updates.location.trim();
+    if (!location) return false;
+
+    const next = {
+      location,
+      description: optional(updates.description),
+      stayed: optional(updates.stayed),
+      at: optional(updates.at),
+      listenedTo: optional(updates.listenedTo),
+      wore: optional(updates.wore),
+      ...(updates.tags !== undefined ? { tags: [...new Set(updates.tags)] } : {}),
+    };
+
+    let success = false;
+    setMyFolders((prev) => {
+      const source = prev.find((f) => f.id === folderId);
+      if (!source?.photos.some((p) => p.id === photoId)) {
+        return prev;
+      }
+      success = true;
+      return prev.map((folder) => {
+        if (folder.id !== folderId) return folder;
+        return {
+          ...folder,
+          photos: folder.photos.map((p) => (p.id === photoId ? { ...p, ...next } : p)),
+        };
+      });
+    });
+
+    if (success) {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === photoId
+            ? {
+                ...p,
+                location: next.location,
+                description: next.description,
+                stayed: next.stayed,
+                at: next.at,
+                listenedTo: next.listenedTo,
+                wore: next.wore,
+                ...(updates.tags !== undefined ? { tags: [...new Set(updates.tags)] } : {}),
+              }
+            : p,
+        ),
+      );
+    }
+
+    return success;
+  }, []);
+
+  const isAlbumFavorited = useCallback(
+    (username: string, folderId: string) => {
+      const u = username.toLowerCase();
+      return favoriteAlbums.some(
+        (a) => a.sourceUsername.toLowerCase() === u && a.sourceFolderId === folderId,
+      );
+    },
+    [favoriteAlbums],
+  );
+
+  const saveAlbumToFavorites = useCallback(
+    (username: string, folderId: string) => {
+      if (username.toLowerCase() === CURRENT_USER.username.toLowerCase()) {
+        return null;
+      }
+      const data = resolveFolder(username, folderId);
+      if (!data) return null;
+      if (isAlbumFavorited(username, folderId)) {
+        return favoriteAlbums.find(
+          (a) =>
+            a.sourceUsername.toLowerCase() === username.toLowerCase() &&
+            a.sourceFolderId === folderId,
+        ) ?? null;
+      }
+      const snapshot: FavoriteAlbum = {
+        id: `fav-${Date.now()}`,
+        sourceUsername: data.profile.username,
+        sourceFolderId: data.folder.id,
+        title: data.folder.title,
+        coverUrl: data.folder.coverUrl,
+        photos: JSON.parse(JSON.stringify(data.folder.photos)) as FolderPhoto[],
+        savedAt: new Date().toISOString(),
+      };
+      setFavoriteAlbums((prev) => [snapshot, ...prev]);
+      return snapshot;
+    },
+    [resolveFolder, isAlbumFavorited, favoriteAlbums],
+  );
+
+  const removeFavoriteAlbum = useCallback((favoriteId: string) => {
+    let removed = false;
+    setFavoriteAlbums((prev) => {
+      if (!prev.some((a) => a.id === favoriteId)) return prev;
+      removed = true;
+      return prev.filter((a) => a.id !== favoriteId);
+    });
+    return removed;
+  }, []);
+
+  const createWishlistAlbum = useCallback(
+    (title: string, initialPhoto?: WishlistPhoto) => {
+      const trimmed = title.trim();
+      const album: WishlistAlbum = {
+        id: `wishlist-${Date.now()}`,
+        title: trimmed || 'Trip wishlist',
+        coverUrl:
+          initialPhoto?.imageUrl ??
+          'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&q=80',
+        photos: initialPhoto ? [initialPhoto] : [],
+      };
+      setWishlistAlbums((prev) => [...prev, album]);
+      return album;
+    },
+    [],
+  );
+
+  const savePhotoToWishlist = useCallback(
+    (
+      photo: FolderPhoto,
+      wishlistId: string,
+      source?: { username?: string; folderId?: string },
+    ) => {
+      let success = false;
+      setWishlistAlbums((prev) => {
+        const target = prev.find((a) => a.id === wishlistId);
+        if (!target) return prev;
+        if (target.photos.some((p) => p.id === photo.id)) {
+          success = true;
+          return prev;
+        }
+        success = true;
+        const entry: WishlistPhoto = {
+          ...JSON.parse(JSON.stringify(photo)),
+          sourceUsername: source?.username,
+          sourceFolderId: source?.folderId,
+        };
+        return prev.map((album) => {
+          if (album.id !== wishlistId) return album;
+          return withWishlistCover({
+            ...album,
+            photos: [entry, ...album.photos],
+          });
+        });
+      });
+      return success;
+    },
+    [],
+  );
+
+  const removePhotoFromWishlist = useCallback((wishlistId: string, photoId: string) => {
+    let removed = false;
+    setWishlistAlbums((prev) => {
+      const target = prev.find((a) => a.id === wishlistId);
+      if (!target?.photos.some((p) => p.id === photoId)) return prev;
+      removed = true;
+      return prev.map((album) => {
+        if (album.id !== wishlistId) return album;
+        return withWishlistCover({
+          ...album,
+          photos: album.photos.filter((p) => p.id !== photoId),
+        });
+      });
+    });
+    return removed;
+  }, []);
+
+  const isPhotoInWishlist = useCallback(
+    (photoId: string, wishlistId?: string) => {
+      if (wishlistId) {
+        return (
+          wishlistAlbums.find((a) => a.id === wishlistId)?.photos.some((p) => p.id === photoId) ??
+          false
+        );
+      }
+      return wishlistAlbums.some((a) => a.photos.some((p) => p.id === photoId));
+    },
+    [wishlistAlbums],
+  );
+
+  const resolveFavoriteAlbum = useCallback(
+    (favoriteId: string) => favoriteAlbums.find((a) => a.id === favoriteId) ?? null,
+    [favoriteAlbums],
+  );
+
+  const resolveWishlistAlbum = useCallback(
+    (wishlistId: string) => wishlistAlbums.find((a) => a.id === wishlistId) ?? null,
+    [wishlistAlbums],
+  );
+
+  const resolveWishlistPhoto = useCallback(
+    (wishlistId: string, photoId: string) => {
+      const album = wishlistAlbums.find((a) => a.id === wishlistId);
+      if (!album) return null;
+      const photo = album.photos.find((p) => p.id === photoId);
+      if (!photo) return null;
+      return { album, photo };
+    },
+    [wishlistAlbums],
+  );
+
   const value = useMemo(
     () => ({
-      user: CURRENT_USER,
+      user,
       posts,
       myFolders,
       myProfile,
+      favoriteAlbums,
+      wishlistAlbums,
       addPost,
       createFolder,
       movePhoto,
       deletePhoto,
+      updatePhoto,
+      updateProfile,
+      saveAlbumToFavorites,
+      removeFavoriteAlbum,
+      isAlbumFavorited,
+      createWishlistAlbum,
+      savePhotoToWishlist,
+      removePhotoFromWishlist,
+      isPhotoInWishlist,
+      resolveFavoriteAlbum,
+      resolveWishlistAlbum,
+      resolveWishlistPhoto,
       resolveProfile,
       resolveFolder,
       resolvePhoto,
     }),
     [
+      user,
       posts,
       myFolders,
       myProfile,
+      favoriteAlbums,
+      wishlistAlbums,
       addPost,
       createFolder,
       movePhoto,
       deletePhoto,
+      updatePhoto,
+      updateProfile,
+      saveAlbumToFavorites,
+      removeFavoriteAlbum,
+      isAlbumFavorited,
+      createWishlistAlbum,
+      savePhotoToWishlist,
+      removePhotoFromWishlist,
+      isPhotoInWishlist,
+      resolveFavoriteAlbum,
+      resolveWishlistAlbum,
+      resolveWishlistPhoto,
       resolveProfile,
       resolveFolder,
       resolvePhoto,

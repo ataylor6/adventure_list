@@ -1,12 +1,46 @@
-export type AdventureCategory = 'nature' | 'city';
+import type { Ionicons } from '@expo/vector-icons';
+
+export type AdventureCategory =
+  | 'nature'
+  | 'city'
+  | 'car_trips'
+  | 'honeymoon'
+  | 'wedding'
+  | 'engagement'
+  | 'camping'
+  | 'roadtrip'
+  | 'bachelorette'
+  | 'bachelor'
+  | 'off_roading';
+
+export const ADVENTURE_CATEGORIES: {
+  id: AdventureCategory;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}[] = [
+  { id: 'nature', label: 'Nature', icon: 'leaf-outline' },
+  { id: 'city', label: 'City', icon: 'business-outline' },
+  { id: 'car_trips', label: 'Car trips', icon: 'car-outline' },
+  { id: 'roadtrip', label: 'Roadtrip', icon: 'map-outline' },
+  { id: 'camping', label: 'Camping', icon: 'bonfire-outline' },
+  { id: 'off_roading', label: 'Off roading', icon: 'trail-sign-outline' },
+  { id: 'honeymoon', label: 'Honeymoon', icon: 'heart-outline' },
+  { id: 'wedding', label: 'Wedding', icon: 'rose-outline' },
+  { id: 'engagement', label: 'Engagement', icon: 'diamond-outline' },
+  { id: 'bachelorette', label: 'Bachelorette', icon: 'wine-outline' },
+  { id: 'bachelor', label: 'Bachelor', icon: 'beer-outline' },
+];
 
 export type AdventurePost = {
   id: string;
   imageUrl: string;
   location: string;
   username: string;
+  /** Album this post belongs to — required to open photo detail from the feed. */
+  folderId: string;
   avatarUrl?: string;
-  category: AdventureCategory;
+  /** One or more adventure tags (multi-select). */
+  tags: AdventureCategory[];
   description?: string;
   stayed?: string;
   at?: string;
@@ -27,81 +61,85 @@ export const CURRENT_USER: CurrentUser = {
   avatarUrl: 'https://i.pravatar.cc/150?u=ashtay427',
 };
 
+const img = (id: string, w = 900) =>
+  `https://images.unsplash.com/${id}?w=${w}&q=80`;
+
 /**
  * Sample posts so you can test scrolling + filters in full mode.
  * Your uploads are prepended on top of these.
+ * `id` + `folderId` must match entries in profileFolders.
  */
 export const SAMPLE_FEED: AdventurePost[] = [
   {
-    id: 'sample-1',
-    imageUrl:
-      'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=900&q=80',
+    id: 's1',
+    folderId: 'serengeti-2024',
+    imageUrl: img('photo-1516426122078-c23e76319801'),
     location: 'Serengeti, Tanzania, Africa',
     username: 'Safari_Captures',
     avatarUrl: 'https://i.pravatar.cc/150?u=safari',
-    category: 'nature',
+    tags: ['nature'],
   },
   {
-    id: 'sample-2',
-    imageUrl:
-      'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=900&q=80',
+    id: 't1',
+    folderId: 'tokyo',
+    imageUrl: img('photo-1480714378408-67cf0d13bc1b'),
     location: 'Tokyo, Japan',
     username: 'city.frames',
     avatarUrl: 'https://i.pravatar.cc/150?u=city',
-    category: 'city',
+    tags: ['city'],
   },
   {
-    id: 'sample-3',
-    imageUrl:
-      'https://images.unsplash.com/photo-1549366021-9f761d450615?w=900&q=80',
+    id: 'm1',
+    folderId: 'mara',
+    imageUrl: img('photo-1549366021-9f761d450615'),
     location: 'Maasai Mara, Kenya',
     username: 'wild.lens',
     avatarUrl: 'https://i.pravatar.cc/150?u=wild',
-    category: 'nature',
+    tags: ['nature'],
   },
   {
-    id: 'sample-4',
-    imageUrl:
-      'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=900&q=80',
+    id: 'n1',
+    folderId: 'nyc',
+    imageUrl: img('photo-1449824913935-59a10b8d2000'),
     location: 'New York, USA',
     username: 'grid.walk',
     avatarUrl: 'https://i.pravatar.cc/150?u=nyc',
-    category: 'city',
+    tags: ['city'],
   },
   {
-    id: 'sample-5',
-    imageUrl:
-      'https://images.unsplash.com/photo-1614028674026-a65e31bfd27c?w=900&q=80',
+    id: 'kr1',
+    folderId: 'kruger',
+    imageUrl: img('photo-1614028674026-a65e31bfd27c'),
     location: 'Kruger National Park, South Africa',
     username: 'trail.notes',
     avatarUrl: 'https://i.pravatar.cc/150?u=trail',
-    category: 'nature',
+    tags: ['nature'],
   },
   {
-    id: 'sample-6',
-    imageUrl:
-      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=900&q=80',
-    location: 'Paris, France',
+    id: 'k1',
+    folderId: 'kenya',
+    imageUrl: img('photo-1682687220742-aba63b1d408a'),
+    location: 'Amboseli, Kenya',
     username: 'ashtay427',
     avatarUrl: CURRENT_USER.avatarUrl,
-    category: 'city',
+    tags: ['nature'],
   },
   {
-    id: 'sample-7',
-    imageUrl:
-      'https://images.unsplash.com/photo-1552410260-0fd5da933302?w=900&q=80',
+    id: 'b1',
+    folderId: 'botswana',
+    imageUrl: img('photo-1552410260-0fd5da933302'),
     location: 'Okavango Delta, Botswana',
     username: 'ashtay427',
     avatarUrl: CURRENT_USER.avatarUrl,
-    category: 'nature',
+    tags: ['nature'],
   },
   {
-    id: 'sample-8',
-    imageUrl:
-      'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=900&q=80',
-    location: 'San Francisco, USA',
+    id: 'a1',
+    folderId: 'amboseli',
+    imageUrl: img('photo-1682687220742-aba63b1d408a'),
+    location: 'Amboseli, Kenya',
     username: 'campfire.club',
     avatarUrl: 'https://i.pravatar.cc/150?u=camp',
-    category: 'city',
+    tags: ['city'],
   },
 ];

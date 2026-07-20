@@ -13,15 +13,20 @@ type Props = {
 export function AdventureCard({ post }: Props) {
   const router = useRouter();
 
-  const openProfile = () => {
+  const openPost = () => {
+    if (!post.folderId) return;
     router.push({
-      pathname: '/user/[username]',
-      params: { username: post.username },
+      pathname: '/user/[username]/folder/[folderId]/photo/[photoId]',
+      params: {
+        username: post.username,
+        folderId: post.folderId,
+        photoId: post.id,
+      },
     });
   };
 
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={openPost}>
       <View style={styles.imageWrap}>
         <Image
           source={{ uri: post.imageUrl }}
@@ -29,21 +34,6 @@ export function AdventureCard({ post }: Props) {
           contentFit="cover"
           transition={200}
         />
-
-        {post.username ? (
-          <Pressable style={styles.author} onPress={openProfile}>
-            {post.avatarUrl ? (
-              <Image
-                source={{ uri: post.avatarUrl }}
-                style={styles.avatar}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback]} />
-            )}
-            <Text style={styles.username}>@{post.username}</Text>
-          </Pressable>
-        ) : null}
       </View>
 
       <View style={styles.footer}>
@@ -52,7 +42,7 @@ export function AdventureCard({ post }: Props) {
           {post.location}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -78,36 +68,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
-  },
-  author: {
-    position: 'absolute',
-    top: 14,
-    left: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(30, 22, 16, 0.35)',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    paddingLeft: 4,
-    borderRadius: 999,
-  },
-  avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1.5,
-    borderColor: 'rgba(243, 237, 228, 0.85)',
-  },
-  avatarFallback: {
-    backgroundColor: Colors.cardMuted,
-  },
-  username: {
-    color: Colors.textOnDark,
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 0.1,
-    paddingRight: 6,
   },
   footer: {
     flexDirection: 'row',

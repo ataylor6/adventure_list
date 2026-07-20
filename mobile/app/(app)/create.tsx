@@ -18,18 +18,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { AdventureCategory } from '@/constants/adventureFeed';
+import { ADVENTURE_CATEGORIES } from '@/constants/adventureFeed';
 import { Colors } from '@/constants/theme';
 import { useFeed } from '@/context/FeedContext';
 import { locationLabelFromExif } from '@/utils/photoLocation';
 
-const CATEGORIES: {
-  id: AdventureCategory;
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}[] = [
-  { id: 'nature', label: 'Nature', icon: 'leaf-outline' },
-  { id: 'city', label: 'City', icon: 'business-outline' },
-];
+const CATEGORIES = ADVENTURE_CATEGORIES;
 
 export default function CreateScreen() {
   const { addPost, user, myFolders } = useFeed();
@@ -37,7 +31,7 @@ export default function CreateScreen() {
   const [busy, setBusy] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [location, setLocation] = useState('');
-  const [category, setCategory] = useState<AdventureCategory | null>(null);
+  const [tags, setTags] = useState<AdventureCategory[]>([]);
   const [folderId, setFolderId] = useState<string | null>(myFolders[0]?.id ?? null);
   const [description, setDescription] = useState('');
   const [stayed, setStayed] = useState('');
@@ -48,13 +42,17 @@ export default function CreateScreen() {
   const resetDraft = () => {
     setImageUri(null);
     setLocation('');
-    setCategory(null);
+    setTags([]);
     setFolderId(myFolders[0]?.id ?? null);
     setDescription('');
     setStayed('');
     setAt('');
     setListenedTo('');
     setWore('');
+  };
+
+  const toggleTag = (id: AdventureCategory) => {
+    setTags((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
   };
 
   const pickPhoto = async () => {
@@ -92,8 +90,8 @@ export default function CreateScreen() {
 
   const publish = () => {
     if (!imageUri) return;
-    if (!category) {
-      Alert.alert('Category required', 'Choose Nature or City for this adventure.');
+    if (tags.length === 0) {
+      Alert.alert('Tags required', 'Choose at least one tag for this adventure.');
       return;
     }
     if (!folderId) {
@@ -109,7 +107,7 @@ export default function CreateScreen() {
     addPost({
       imageUrl: imageUri,
       location: trimmedLocation,
-      category,
+      tags,
       folderId,
       description,
       stayed,
@@ -118,7 +116,7 @@ export default function CreateScreen() {
       wore,
     });
     resetDraft();
-    router.replace('/(tabs)/home');
+    router.replace('/(app)/home');
   };
 
   return (
@@ -170,15 +168,16 @@ export default function CreateScreen() {
                 </View>
               </View>
 
-              <Text style={styles.label}>Category</Text>
+              <Text style={styles.label}>Tags</Text>
+              <Text style={styles.helper}>Select one or more</Text>
               <View style={styles.categoryRow}>
                 {CATEGORIES.map((item) => {
-                  const active = category === item.id;
+                  const active = tags.includes(item.id);
                   return (
                     <Pressable
                       key={item.id}
                       style={[styles.chip, active && styles.chipActive]}
-                      onPress={() => setCategory(item.id)}
+                      onPress={() => toggleTag(item.id)}
                     >
                       <Ionicons
                         name={item.icon}
@@ -398,6 +397,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.text,
     marginTop: 6,
+  },
+  helper: {
+    alignSelf: 'stretch',
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: -2,
+    marginBottom: 2,
   },
   input: {
     alignSelf: 'stretch',

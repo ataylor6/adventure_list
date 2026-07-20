@@ -1,34 +1,40 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
 import { useFeed } from '@/context/FeedContext';
+import { MissingState } from '@/components/MissingState';
 
-export default function FolderPhotosScreen() {
+export default function FavoriteAlbumScreen() {
   const router = useRouter();
-  const { username, folderId } = useLocalSearchParams<{
-    username: string;
-    folderId: string;
-  }>();
-  const { resolveFolder } = useFeed();
-  const data = resolveFolder(username ?? '', folderId ?? '');
+  const { albumId } = useLocalSearchParams<{ albumId: string }>();
+  const { resolveFavoriteAlbum, removeFavoriteAlbum } = useFeed();
+  const album = resolveFavoriteAlbum(albumId ?? '');
   const { width } = useWindowDimensions();
   const gap = 3;
   const pad = 2;
   const size = (width - pad * 2 - gap * 2) / 3;
 
-  if (!data) {
-    return (
-      <View style={styles.missing}>
-        <Text style={styles.missingText}>Folder not found</Text>
-      </View>
-    );
+  if (!album) {
+    return <MissingState title="Favorite not found" message="This saved album is unavailable." />;
   }
 
-  const { folder } = data;
+  const onRemove = () => {
+    Alert.alert('Remove favorite?', `Remove “${album.title}” from your favorites?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          removeFavoriteAlbum(album.id);
+          router.back();
+        },
+      },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -37,19 +43,19 @@ export default function FolderPhotosScreen() {
           <Ionicons name="chevron-back" size={28} color={Colors.text} />
         </Pressable>
         <View style={styles.topCenter}>
-          <View style={styles.folderLabel}>
-            <Ionicons name="folder" size={16} color={Colors.card} />
-            <Text style={styles.topTitle}>{folder.title}</Text>
+          <View style={styles.labelRow}>
+            <Ionicons name="heart" size={16} color={Colors.card} />
+            <Text style={styles.topTitle}>{album.title}</Text>
           </View>
-          <Text style={styles.topSub}>
-            {folder.photos.length} photo{folder.photos.length === 1 ? '' : 's'}
-          </Text>
+          <Text style={styles.topSub}>@{album.sourceUsername}</Text>
         </View>
-        <View style={styles.backBtn} />
+        <Pressable onPress={onRemove} hitSlop={12} style={styles.backBtn}>
+          <Ionicons name="trash-outline" size={22} color="#B42318" />
+        </Pressable>
       </View>
 
       <FlatList
-        data={folder.photos}
+        data={album.photos}
         keyExtractor={(item) => item.id}
         numColumns={3}
         columnWrapperStyle={{ gap }}
@@ -61,8 +67,8 @@ export default function FolderPhotosScreen() {
               router.push({
                 pathname: '/user/[username]/folder/[folderId]/photo/[photoId]',
                 params: {
-                  username: username ?? '',
-                  folderId: folderId ?? '',
+                  username: album.sourceUsername,
+                  folderId: album.sourceFolderId,
                   photoId: item.id,
                 },
               })
@@ -91,19 +97,20 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 40,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   topCenter: {
+    flex: 1,
     alignItems: 'center',
     gap: 2,
   },
-  folderLabel: {
+  labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   topTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.text,
   },
@@ -112,22 +119,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   photoTile: {
-    borderRadius: 8,
+    borderRadius: 4,
     overflow: 'hidden',
     backgroundColor: Colors.cardMuted,
   },
   photo: {
     width: '100%',
     height: '100%',
-  },
-  missing: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.background,
-  },
-  missingText: {
-    color: Colors.textSecondary,
-    fontSize: 16,
   },
 });
