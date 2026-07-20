@@ -41,6 +41,8 @@ export type AdventurePost = {
   avatarUrl?: string;
   /** One or more adventure tags (multi-select). */
   tags: AdventureCategory[];
+  latitude?: number;
+  longitude?: number;
   description?: string;
   stayed?: string;
   at?: string;
@@ -64,6 +66,17 @@ export const CURRENT_USER: CurrentUser = {
 const img = (id: string, w = 900) =>
   `https://images.unsplash.com/${id}?w=${w}&q=80`;
 
+/** Seed coords so Nearby / 5-mile filter works offline for sample posts. */
+const SEED_COORDS: Record<string, { latitude: number; longitude: number }> = {
+  'Serengeti, Tanzania, Africa': { latitude: -2.3333, longitude: 34.8333 },
+  'Tokyo, Japan': { latitude: 35.6762, longitude: 139.6503 },
+  'Maasai Mara, Kenya': { latitude: -1.4061, longitude: 35.0117 },
+  'New York, USA': { latitude: 40.7128, longitude: -74.006 },
+  'Kruger National Park, South Africa': { latitude: -23.9884, longitude: 31.5547 },
+  'Amboseli, Kenya': { latitude: -2.6527, longitude: 37.2606 },
+  'Okavango Delta, Botswana': { latitude: -19.2833, longitude: 22.7833 },
+};
+
 /**
  * Sample posts so you can test scrolling + filters in full mode.
  * Your uploads are prepended on top of these.
@@ -75,6 +88,7 @@ export const SAMPLE_FEED: AdventurePost[] = [
     folderId: 'serengeti-2024',
     imageUrl: img('photo-1516426122078-c23e76319801'),
     location: 'Serengeti, Tanzania, Africa',
+    ...SEED_COORDS['Serengeti, Tanzania, Africa'],
     username: 'Safari_Captures',
     avatarUrl: 'https://i.pravatar.cc/150?u=safari',
     tags: ['nature'],
@@ -84,6 +98,7 @@ export const SAMPLE_FEED: AdventurePost[] = [
     folderId: 'tokyo',
     imageUrl: img('photo-1480714378408-67cf0d13bc1b'),
     location: 'Tokyo, Japan',
+    ...SEED_COORDS['Tokyo, Japan'],
     username: 'city.frames',
     avatarUrl: 'https://i.pravatar.cc/150?u=city',
     tags: ['city'],
@@ -93,6 +108,7 @@ export const SAMPLE_FEED: AdventurePost[] = [
     folderId: 'mara',
     imageUrl: img('photo-1549366021-9f761d450615'),
     location: 'Maasai Mara, Kenya',
+    ...SEED_COORDS['Maasai Mara, Kenya'],
     username: 'wild.lens',
     avatarUrl: 'https://i.pravatar.cc/150?u=wild',
     tags: ['nature'],
@@ -102,6 +118,7 @@ export const SAMPLE_FEED: AdventurePost[] = [
     folderId: 'nyc',
     imageUrl: img('photo-1449824913935-59a10b8d2000'),
     location: 'New York, USA',
+    ...SEED_COORDS['New York, USA'],
     username: 'grid.walk',
     avatarUrl: 'https://i.pravatar.cc/150?u=nyc',
     tags: ['city'],
@@ -111,6 +128,7 @@ export const SAMPLE_FEED: AdventurePost[] = [
     folderId: 'kruger',
     imageUrl: img('photo-1614028674026-a65e31bfd27c'),
     location: 'Kruger National Park, South Africa',
+    ...SEED_COORDS['Kruger National Park, South Africa'],
     username: 'trail.notes',
     avatarUrl: 'https://i.pravatar.cc/150?u=trail',
     tags: ['nature'],
@@ -120,6 +138,7 @@ export const SAMPLE_FEED: AdventurePost[] = [
     folderId: 'kenya',
     imageUrl: img('photo-1682687220742-aba63b1d408a'),
     location: 'Amboseli, Kenya',
+    ...SEED_COORDS['Amboseli, Kenya'],
     username: 'ashtay427',
     avatarUrl: CURRENT_USER.avatarUrl,
     tags: ['nature'],
@@ -129,6 +148,7 @@ export const SAMPLE_FEED: AdventurePost[] = [
     folderId: 'botswana',
     imageUrl: img('photo-1552410260-0fd5da933302'),
     location: 'Okavango Delta, Botswana',
+    ...SEED_COORDS['Okavango Delta, Botswana'],
     username: 'ashtay427',
     avatarUrl: CURRENT_USER.avatarUrl,
     tags: ['nature'],
@@ -138,6 +158,7 @@ export const SAMPLE_FEED: AdventurePost[] = [
     folderId: 'amboseli',
     imageUrl: img('photo-1682687220742-aba63b1d408a'),
     location: 'Amboseli, Kenya',
+    ...SEED_COORDS['Amboseli, Kenya'],
     username: 'campfire.club',
     avatarUrl: 'https://i.pravatar.cc/150?u=camp',
     tags: ['city'],

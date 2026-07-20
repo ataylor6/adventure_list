@@ -21,7 +21,8 @@ import type { AdventureCategory } from '@/constants/adventureFeed';
 import { ADVENTURE_CATEGORIES } from '@/constants/adventureFeed';
 import { Colors } from '@/constants/theme';
 import { useFeed } from '@/context/FeedContext';
-import { locationLabelFromExif } from '@/utils/photoLocation';
+import { locationLabelFromExif, coordsFromExif } from '@/utils/photoLocation';
+import { coordsFromPlaceLabel } from '@/utils/geo';
 
 const CATEGORIES = ADVENTURE_CATEGORIES;
 
@@ -31,6 +32,7 @@ export default function CreateScreen() {
   const [busy, setBusy] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [location, setLocation] = useState('');
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [tags, setTags] = useState<AdventureCategory[]>([]);
   const [folderId, setFolderId] = useState<string | null>(myFolders[0]?.id ?? null);
   const [description, setDescription] = useState('');
@@ -42,6 +44,7 @@ export default function CreateScreen() {
   const resetDraft = () => {
     setImageUri(null);
     setLocation('');
+    setCoords(null);
     setTags([]);
     setFolderId(myFolders[0]?.id ?? null);
     setDescription('');
@@ -76,8 +79,10 @@ export default function CreateScreen() {
     setBusy(true);
     try {
       const fromExif = await locationLabelFromExif(asset.exif ?? null);
+      const fromGps = coordsFromExif(asset.exif ?? null);
       setImageUri(asset.uri);
       setLocation(fromExif === 'Location unavailable' ? '' : fromExif);
+      setCoords(fromGps);
     } catch (e) {
       Alert.alert(
         'Could not read photo',
@@ -104,11 +109,15 @@ export default function CreateScreen() {
       return;
     }
 
+    const resolved = coords ?? coordsFromPlaceLabel(trimmedLocation);
+
     addPost({
       imageUrl: imageUri,
       location: trimmedLocation,
       tags,
       folderId,
+      latitude: resolved?.latitude,
+      longitude: resolved?.longitude,
       description,
       stayed,
       at,

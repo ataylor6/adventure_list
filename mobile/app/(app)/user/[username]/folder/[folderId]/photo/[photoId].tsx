@@ -23,6 +23,7 @@ import {
   ADVENTURE_CATEGORIES,
   type AdventureCategory,
 } from '@/constants/adventureFeed';
+import { openNearbyFromLocation } from '@/utils/openNearby';
 
 function DetailRow({ label, value }: { label: string; value?: string }) {
   if (!value?.trim()) return null;
@@ -50,6 +51,7 @@ export default function PhotoDetailScreen() {
     deletePhoto,
     updatePhoto,
     createFolder,
+    setAlbumCover,
     isPhotoInWishlist,
   } = useFeed();
   const [selectedFolderId, setSelectedFolderId] = useState(folderId ?? '');
@@ -178,6 +180,15 @@ export default function PhotoDetailScreen() {
     });
   };
 
+  const onMakeCover = () => {
+    const ok = setAlbumCover(folderId ?? '', photo.id);
+    if (!ok) {
+      Alert.alert('Could not update cover', 'That album is unavailable.');
+      return;
+    }
+    Alert.alert('Cover updated', 'This photo is now the album cover.');
+  };
+
   const onDelete = () => {
     Alert.alert('Delete photo?', 'This removes it from the album and your feed.', [
       { text: 'Cancel', style: 'cancel' },
@@ -185,7 +196,15 @@ export default function PhotoDetailScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          deletePhoto(photo.id, folderId ?? '');
+          const result = deletePhoto(photo.id, folderId ?? '');
+          if (!result.success) return;
+          if (result.albumDeleted) {
+            router.replace({
+              pathname: '/user/[username]',
+              params: { username: user.username },
+            });
+            return;
+          }
           router.replace({
             pathname: '/user/[username]/folder/[folderId]',
             params: { username: user.username, folderId: folderId ?? '' },
@@ -237,10 +256,21 @@ export default function PhotoDetailScreen() {
             contentFit="cover"
           />
           {!editing && photo.location ? (
-            <View style={styles.locationRow}>
+            <Pressable
+              style={styles.locationRow}
+              onPress={() => {
+                const fromFeed = posts.find((p) => p.id === photo.id);
+                openNearbyFromLocation(router, {
+                  location: photo.location ?? '',
+                  latitude: photo.latitude ?? fromFeed?.latitude,
+                  longitude: photo.longitude ?? fromFeed?.longitude,
+                });
+              }}
+              hitSlop={6}
+            >
               <Ionicons name="location-sharp" size={16} color={Colors.textOnDark} />
               <Text style={styles.locationText}>{photo.location}</Text>
-            </View>
+            </Pressable>
           ) : null}
         </View>
 
@@ -444,6 +474,31 @@ export default function PhotoDetailScreen() {
               disabled={selectedFolderId === folderId || creatingNew}
             >
               <Text style={styles.actionBtnText}>Update album</Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.coverBtn,
+                data.folder.coverUrl === photo.imageUrl && styles.actionBtnDisabled,
+              ]}
+              onPress={onMakeCover}
+              disabled={data.folder.coverUrl === photo.imageUrl}
+            >
+              <Ionicons
+                name="image-outline"
+                size={18}
+                color={data.folder.coverUrl === photo.imageUrl ? Colors.textSecondary : Colors.cream}
+              />
+              <Text
+                style={[
+                  styles.actionBtnText,
+                  data.folder.coverUrl === photo.imageUrl && styles.coverBtnTextDisabled,
+                ]}
+              >
+                {data.folder.coverUrl === photo.imageUrl
+                  ? 'Album cover photo'
+                  : 'Make album cover photo'}
+              </Text>
             </Pressable>
 
             <Pressable style={styles.deleteBtn} onPress={onDelete}>
@@ -728,6 +783,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  coverBtn: {
+    marginTop: 4,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.card,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  coverBtnTextDisabled: {
+    color: Colors.textSecondary,
   },
   actionBtnDisabled: {
     opacity: 0.45,
