@@ -61,12 +61,24 @@ function FolderTile({
 
 export function ProfileFoldersView({ profile, showBack = false }: Props) {
   const router = useRouter();
-  const { user, updateProfile } = useFeed();
+  const {
+    user,
+    updateProfile,
+    travelCompanions,
+    toggleTravelWith,
+    isTravelingWith,
+    resolveProfile,
+  } = useFeed();
   const { width } = useWindowDimensions();
   const gap = 3;
   const pad = 2;
   const size = (width - pad * 2 - gap * 2) / 3;
   const isOwn = profile.username.toLowerCase() === user.username.toLowerCase();
+  const travelingWith = !isOwn && isTravelingWith(profile.username);
+
+  const companions = travelCompanions
+    .map((username) => resolveProfile(username))
+    .filter((p): p is PublicProfile => Boolean(p));
 
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState(profile.displayName);
@@ -79,6 +91,17 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
     setEditBio(profile.bio);
     setEditAvatar(profile.avatarUrl);
     setEditOpen(true);
+  };
+
+  const onTravelWith = () => {
+    const next = !travelingWith;
+    toggleTravelWith(profile.username);
+    Alert.alert(
+      next ? 'Traveling together' : 'Removed',
+      next
+        ? `You’re now set to travel with @${profile.username}.`
+        : `You’re no longer traveling with @${profile.username}.`,
+    );
   };
 
   const pickAvatar = async () => {
@@ -155,31 +178,78 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
         columnWrapperStyle={{ gap }}
         contentContainerStyle={{ paddingHorizontal: pad, paddingBottom: 24, gap }}
         ListHeaderComponent={
-          <View style={styles.header}>
-            <Pressable
-              onPress={isOwn ? openEdit : undefined}
-              disabled={!isOwn}
-              style={styles.avatarWrap}
-            >
-              <Image
-                source={{ uri: profile.avatarUrl }}
-                style={styles.avatar}
-                contentFit="cover"
-              />
-              {isOwn ? (
-                <View style={styles.avatarEditBadge}>
-                  <Ionicons name="camera" size={12} color={Colors.cream} />
-                </View>
-              ) : null}
-            </Pressable>
-            <View style={styles.headerText}>
-              <Text style={styles.displayName}>{profile.displayName}</Text>
-              <Text style={styles.bio}>{profile.bio || 'No bio yet.'}</Text>
-              <Text style={styles.folderHint}>
-                {profile.folders.length} adventure folder
-                {profile.folders.length === 1 ? '' : 's'}
-              </Text>
+          <View style={styles.headerBlock}>
+            <View style={styles.header}>
+              <Pressable
+                onPress={isOwn ? openEdit : undefined}
+                disabled={!isOwn}
+                style={styles.avatarWrap}
+              >
+                <Image
+                  source={{ uri: profile.avatarUrl }}
+                  style={styles.avatar}
+                  contentFit="cover"
+                />
+                {isOwn ? (
+                  <View style={styles.avatarEditBadge}>
+                    <Ionicons name="camera" size={12} color={Colors.cream} />
+                  </View>
+                ) : null}
+              </Pressable>
+              <View style={styles.headerText}>
+                <Text style={styles.displayName}>{profile.displayName}</Text>
+                <Text style={styles.bio}>{profile.bio || 'No bio yet.'}</Text>
+                <Text style={styles.folderHint}>
+                  {profile.folders.length} adventure folder
+                  {profile.folders.length === 1 ? '' : 's'}
+                </Text>
+              </View>
             </View>
+
+            {!isOwn ? (
+              <Pressable
+                style={[styles.travelBtn, travelingWith && styles.travelBtnActive]}
+                onPress={onTravelWith}
+              >
+                <Ionicons
+                  name={travelingWith ? 'people' : 'people-outline'}
+                  size={18}
+                  color={travelingWith ? Colors.cream : Colors.text}
+                />
+                <Text style={[styles.travelBtnText, travelingWith && styles.travelBtnTextActive]}>
+                  {travelingWith ? 'Traveling with' : 'Travel with'}
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {isOwn && companions.length > 0 ? (
+              <View style={styles.companionsSection}>
+                <Text style={styles.companionsTitle}>Traveling with</Text>
+                <View style={styles.companionsRow}>
+                  {companions.map((companion) => (
+                    <Pressable
+                      key={companion.username}
+                      style={styles.companionChip}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/user/[username]',
+                          params: { username: companion.username },
+                        })
+                      }
+                    >
+                      <Image
+                        source={{ uri: companion.avatarUrl }}
+                        style={styles.companionAvatar}
+                        contentFit="cover"
+                      />
+                      <Text style={styles.companionName} numberOfLines={1}>
+                        @{companion.username}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
           </View>
         }
         renderItem={({ item }) => (
@@ -281,8 +351,76 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 14,
     paddingTop: 8,
-    paddingBottom: 18,
+    paddingBottom: 12,
     alignItems: 'center',
+  },
+  headerBlock: {
+    paddingBottom: 10,
+    gap: 10,
+  },
+  travelBtn: {
+    marginHorizontal: 14,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(60, 42, 30, 0.18)',
+    backgroundColor: 'rgba(247, 244, 238, 0.9)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  travelBtnActive: {
+    backgroundColor: Colors.card,
+    borderColor: Colors.card,
+  },
+  travelBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  travelBtnTextActive: {
+    color: Colors.cream,
+  },
+  companionsSection: {
+    paddingHorizontal: 14,
+    gap: 8,
+  },
+  companionsTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  companionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  companionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 6,
+    paddingLeft: 6,
+    paddingRight: 12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(247, 244, 238, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(60, 42, 30, 0.12)',
+    maxWidth: '100%',
+  },
+  companionAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  companionName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+    maxWidth: 140,
   },
   avatarWrap: {
     position: 'relative',

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type View as RNView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,15 +20,15 @@ import {
 import { Colors } from '@/constants/theme';
 import { useFeed } from '@/context/FeedContext';
 
-type ExploreFilter = 'all' | AdventureCategory;
+type FeedScope = 'new' | 'friends';
 
-const FILTERS: {
-  id: ExploreFilter;
+const SCOPES: {
+  id: FeedScope;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
 }[] = [
-  { id: 'all', label: 'All', icon: 'globe-outline' },
-  ...ADVENTURE_CATEGORIES,
+  { id: 'new', label: 'New adventures', icon: 'sparkles-outline' },
+  { id: 'friends', label: 'Friends', icon: 'people-outline' },
 ];
 
 function LeafBackdrop() {
@@ -44,41 +45,109 @@ function LeafBackdrop() {
 }
 
 export default function HomeScreen() {
-  const { posts, user } = useFeed();
-  const [filter, setFilter] = useState<ExploreFilter>('all');
+  const { posts, user, travelCompanions } = useFeed();
+  const [selectedTags, setSelectedTags] = useState<AdventureCategory[]>([]);
+  const [scope, setScope] = useState<FeedScope>('new');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuTop, setMenuTop] = useState(0);
+  const dropdownRef = useRef<RNView>(null);
+
+  const openMenu = () => {
+    dropdownRef.current?.measureInWindow((_x, y, _width, height) => {
+      setMenuTop(y + height + 6);
+      setMenuOpen(true);
+    });
+  };
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return posts;
-    return posts.filter((p) => p.tags.includes(filter));
-  }, [posts, filter]);
+    const companionSet = new Set(travelCompanions.map((u) => u.toLowerCase()));
+    return posts.filter((p) => {
+      if (scope === 'friends' && !companionSet.has(p.username.toLowerCase())) {
+        return false;
+      }
+      if (
+        selectedTags.length > 0 &&
+        !selectedTags.some((tag) => p.tags.includes(tag))
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [posts, selectedTags, scope, travelCompanions]);
 
-  const selected = FILTERS.find((f) => f.id === filter) ?? FILTERS[0];
+  const categorySummary =
+    selectedTags.length === 0
+      ? 'All categories'
+      : selectedTags.length === 1
+        ? (ADVENTURE_CATEGORIES.find((c) => c.id === selectedTags[0])?.label ??
+          '1 category')
+        : `${selectedTags.length} categories`;
+
   const emptyLabel =
-    filter === 'all'
-      ? 'adventures'
-      : selected.label.toLowerCase();
+    selectedTags.length === 0
+      ? scope === 'friends'
+        ? 'friend'
+        : 'adventures'
+      : selectedTags
+          .map((id) => ADVENTURE_CATEGORIES.find((c) => c.id === id)?.label ?? id)
+          .join(', ')
+          .toLowerCase();
 
-  const onPick = (id: ExploreFilter) => {
-    setFilter(id);
-    setMenuOpen(false);
+  const toggleTag = (id: AdventureCategory) => {
+    setSelectedTags((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
+    );
   };
 
   return (
     <View style={styles.root}>
       <LeafBackdrop />
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <View style={styles.header}>
-          <Pressable
-            style={styles.dropdownBtn}
-            onPress={() => setMenuOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Filter adventures"
+        <View style={styles.filters}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scopeRow}
           >
-            <Ionicons name={selected.icon} size={16} color={Colors.text} />
-            <Text style={styles.dropdownLabel}>{selected.label}</Text>
-            <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} />
-          </Pressable>
+            {SCOPES.map((item) => {
+              const active = scope === item.id;
+              return (
+                <Pressable
+                  key={item.id}
+                  style={[styles.scopeChip, active && styles.scopeChipActive]}
+                  onPress={() => setScope(item.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={item.label}
+                >
+                  <Ionicons
+                    name={item.icon}
+                    size={16}
+                    color={active ? Colors.cream : Colors.text}
+                  />
+                  <Text style={[styles.scopeLabel, active && styles.scopeLabelActive]}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          <View style={styles.categoryRow}>
+            <Pressable
+              ref={dropdownRef}
+              style={styles.dropdownBtn}
+              onPress={openMenu}
+              accessibilityRole="button"
+              accessibilityLabel="Filter by category"
+            >
+              <Ionicons name="options-outline" size={14} color={Colors.text} />
+              <Text style={styles.dropdownLabel} numberOfLines={1}>
+                {categorySummary}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.listWrap}>
@@ -95,12 +164,18 @@ export default function HomeScreen() {
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Text style={styles.emptyTitle}>
-                  {posts.length === 0 ? 'Your feed is empty' : `No ${emptyLabel} adventures`}
+                  {posts.length === 0
+                    ? 'Your feed is empty'
+                    : scope === 'friends' && travelCompanions.length === 0
+                      ? 'No travel companions yet'
+                      : `No ${emptyLabel} adventures`}
                 </Text>
                 <Text style={styles.emptyBody}>
                   {posts.length === 0
                     ? `Logged in as @${user.username}. Tap + to upload a photo.`
-                    : 'Try another filter or add a new post.'}
+                    : scope === 'friends' && travelCompanions.length === 0
+                      ? 'Tap Travel with on someone’s profile to see their posts here.'
+                      : 'Try another filter or add a new post.'}
                 </Text>
               </View>
             }
@@ -115,35 +190,48 @@ export default function HomeScreen() {
         onRequestClose={() => setMenuOpen(false)}
       >
         <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
-          <SafeAreaView edges={['top']} style={styles.menuSafe}>
-            <Pressable style={styles.menuCard} onPress={(e) => e.stopPropagation()}>
-              <Text style={styles.menuTitle}>Filter by</Text>
-              <ScrollView style={styles.menuList} bounces={false}>
-                {FILTERS.map((item) => {
-                  const active = filter === item.id;
-                  return (
-                    <Pressable
-                      key={item.id}
-                      style={[styles.menuRow, active && styles.menuRowActive]}
-                      onPress={() => onPick(item.id)}
-                    >
-                      <Ionicons
-                        name={item.icon}
-                        size={18}
-                        color={active ? Colors.cream : Colors.text}
-                      />
-                      <Text style={[styles.menuRowText, active && styles.menuRowTextActive]}>
-                        {item.label}
-                      </Text>
-                      {active ? (
-                        <Ionicons name="checkmark" size={18} color={Colors.cream} />
+          <Pressable
+            style={[styles.menuCard, { top: menuTop }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.menuHeader}>
+              <Text style={styles.menuTitle}>Categories</Text>
+              {selectedTags.length > 0 ? (
+                <Pressable onPress={() => setSelectedTags([])} hitSlop={8}>
+                  <Text style={styles.clearText}>Clear</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            <ScrollView style={styles.menuList} bounces={false}>
+              {ADVENTURE_CATEGORIES.map((item) => {
+                const checked = selectedTags.includes(item.id);
+                return (
+                  <Pressable
+                    key={item.id}
+                    style={[styles.menuRow, checked && styles.menuRowChecked]}
+                    onPress={() => toggleTag(item.id)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked }}
+                  >
+                    <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                      {checked ? (
+                        <Ionicons name="checkmark" size={10} color={Colors.cream} />
                       ) : null}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+                    </View>
+                    <Ionicons
+                      name={item.icon}
+                      size={14}
+                      color={Colors.textSecondary}
+                    />
+                    <Text style={styles.menuRowText}>{item.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Pressable style={styles.doneBtn} onPress={() => setMenuOpen(false)}>
+              <Text style={styles.doneBtnText}>Done</Text>
             </Pressable>
-          </SafeAreaView>
+          </Pressable>
         </Pressable>
       </Modal>
     </View>
@@ -158,15 +246,22 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
-  header: {
-    height: 52,
+  filters: {
+    gap: 6,
+    paddingBottom: 6,
+  },
+  scopeRow: {
     paddingHorizontal: 16,
     paddingTop: 4,
-    paddingBottom: 10,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  dropdownBtn: {
-    alignSelf: 'flex-start',
+  categoryRow: {
+    paddingHorizontal: 16,
+    paddingBottom: 2,
+  },
+  scopeChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -177,10 +272,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(60, 42, 30, 0.12)',
   },
-  dropdownLabel: {
+  scopeChipActive: {
+    backgroundColor: Colors.card,
+    borderColor: Colors.card,
+  },
+  scopeLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.text,
+  },
+  scopeLabelActive: {
+    color: Colors.cream,
+  },
+  dropdownBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(247, 244, 238, 0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(60, 42, 30, 0.10)',
+    maxWidth: '100%',
+  },
+  dropdownLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    flexShrink: 1,
   },
   listWrap: {
     flex: 1,
@@ -213,51 +334,84 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(20, 16, 12, 0.35)',
   },
-  menuSafe: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
   menuCard: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
     backgroundColor: '#F7F4EE',
     borderRadius: 16,
     padding: 12,
-    maxHeight: '70%',
+    maxHeight: '62%',
     shadowColor: '#1A140F',
     shadowOpacity: 0.18,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
+  menuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingBottom: 6,
+  },
   menuTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: Colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    paddingHorizontal: 8,
-    paddingBottom: 6,
+  },
+  clearText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textSecondary,
   },
   menuList: {
-    maxHeight: 420,
+    maxHeight: 360,
   },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 10,
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRadius: 8,
   },
-  menuRowActive: {
-    backgroundColor: Colors.card,
+  menuRowChecked: {
+    backgroundColor: 'rgba(60, 42, 30, 0.06)',
   },
   menuRowText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '600',
-    color: Colors.text,
+    color: Colors.textSecondary,
   },
-  menuRowTextActive: {
+  checkbox: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    borderColor: 'rgba(60, 42, 30, 0.35)',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.card,
+    borderColor: Colors.card,
+  },
+  doneBtn: {
+    marginTop: 6,
+    height: 34,
+    borderRadius: 999,
+    backgroundColor: Colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
     color: Colors.cream,
   },
   leaf1: { position: 'absolute', top: 40, left: -20, transform: [{ rotate: '-25deg' }] },

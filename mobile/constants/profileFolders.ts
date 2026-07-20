@@ -4,6 +4,8 @@ export type FolderPhoto = {
   id: string;
   imageUrl: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
   description?: string;
   stayed?: string;
   at?: string;

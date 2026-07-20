@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { AdventurePost } from '@/constants/adventureFeed';
 import { Colors } from '@/constants/theme';
+import { openNearbyFromLocation } from '@/utils/openNearby';
 
 type Props = {
   post: AdventurePost;
@@ -25,24 +26,32 @@ export function AdventureCard({ post }: Props) {
     });
   };
 
+  const openNearby = () => {
+    openNearbyFromLocation(router, {
+      location: post.location,
+      latitude: post.latitude,
+      longitude: post.longitude,
+    });
+  };
+
   return (
-    <Pressable style={styles.card} onPress={openPost}>
-      <View style={styles.imageWrap}>
+    <View style={styles.card}>
+      <Pressable style={styles.imageWrap} onPress={openPost}>
         <Image
           source={{ uri: post.imageUrl }}
           style={styles.image}
           contentFit="cover"
           transition={200}
         />
-      </View>
+      </Pressable>
 
-      <View style={styles.footer}>
+      <Pressable style={styles.footer} onPress={openNearby} hitSlop={6}>
         <Ionicons name="location-sharp" size={16} color={Colors.textOnDark} />
         <Text style={styles.location} numberOfLines={1}>
           {post.location}
         </Text>
-      </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 

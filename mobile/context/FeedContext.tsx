@@ -27,6 +27,8 @@ type NewPostInput = {
   location: string;
   tags: AdventureCategory[];
   folderId: string;
+  latitude?: number;
+  longitude?: number;
   description?: string;
   stayed?: string;
   at?: string;
@@ -84,9 +86,16 @@ type FeedContextValue = {
   addPost: (input: NewPostInput) => AdventurePost;
   createFolder: (title: string) => AdventureFolder;
   movePhoto: (photoId: string, fromFolderId: string, toFolderId: string) => boolean;
-  deletePhoto: (photoId: string, folderId: string) => boolean;
+  deletePhoto: (
+    photoId: string,
+    folderId: string,
+  ) => { success: boolean; albumDeleted: boolean };
   updatePhoto: (photoId: string, folderId: string, updates: PhotoUpdateInput) => boolean;
+  setAlbumCover: (folderId: string, photoId: string) => boolean;
   updateProfile: (updates: ProfileUpdateInput) => void;
+  travelCompanions: string[];
+  toggleTravelWith: (username: string) => boolean;
+  isTravelingWith: (username: string) => boolean;
   saveAlbumToFavorites: (username: string, folderId: string) => FavoriteAlbum | null;
   removeFavoriteAlbum: (favoriteId: string) => boolean;
   isAlbumFavorited: (username: string, folderId: string) => boolean;
@@ -158,6 +167,7 @@ export function FeedProvider({ children }: { children: ReactNode }) {
   const [displayName, setDisplayName] = useState(CURRENT_USER.displayName);
   const [avatarUrl, setAvatarUrl] = useState(CURRENT_USER.avatarUrl);
   const [bio, setBio] = useState(PROFILES.ashtay427?.bio ?? '');
+  const [travelCompanions, setTravelCompanions] = useState<string[]>([]);
 
   const user = useMemo<CurrentUser>(
     () => ({
@@ -223,6 +233,8 @@ export function FeedProvider({ children }: { children: ReactNode }) {
         username: CURRENT_USER.username,
         avatarUrl,
         tags,
+        latitude: input.latitude,
+        longitude: input.longitude,
         description: optional(input.description),
         stayed: optional(input.stayed),
         at: optional(input.at),
@@ -234,6 +246,8 @@ export function FeedProvider({ children }: { children: ReactNode }) {
         id,
         imageUrl: input.imageUrl,
         location: input.location.trim(),
+        latitude: input.latitude,
+        longitude: input.longitude,
         description: optional(input.description),
         stayed: optional(input.stayed),
         at: optional(input.at),
@@ -280,6 +294,34 @@ export function FeedProvider({ children }: { children: ReactNode }) {
       }
     }
   }, []);
+
+  const isTravelingWith = useCallback(
+    (username: string) => {
+      const u = username.toLowerCase();
+      return travelCompanions.some((c) => c.toLowerCase() === u);
+    },
+    [travelCompanions],
+  );
+
+  const toggleTravelWith = useCallback(
+    (username: string) => {
+      const trimmed = username.trim();
+      if (!trimmed) return false;
+      if (trimmed.toLowerCase() === CURRENT_USER.username.toLowerCase()) return false;
+
+      setTravelCompanions((prev) => {
+        const exists = prev.some((c) => c.toLowerCase() === trimmed.toLowerCase());
+        if (exists) {
+          return prev.filter((c) => c.toLowerCase() !== trimmed.toLowerCase());
+        }
+        // Prefer canonical casing from known profiles when available
+        const profile = getStaticProfile(trimmed);
+        return [...prev, profile?.username ?? trimmed];
+      });
+      return true;
+    },
+    [],
+  );
 
   const createFolder = useCallback((title: string) => {
     const trimmed = title.trim();
@@ -332,27 +374,65 @@ export function FeedProvider({ children }: { children: ReactNode }) {
     return success;
   }, []);
 
+  const setAlbumCover = useCallback((folderId: string, photoId: string) => {
+    let success = false;
+    setMyFolders((prev) => {
+      const folder = prev.find((f) => f.id === folderId);
+      const photo = folder?.photos.find((p) => p.id === photoId);
+      if (!folder || !photo) return prev;
+      success = true;
+      const rest = folder.photos.filter((p) => p.id !== photoId);
+      return prev.map((f) => {
+        if (f.id !== folderId) return f;
+        return {
+          ...f,
+          coverUrl: photo.imageUrl,
+          photos: [photo, ...rest],
+        };
+      });
+    });
+    return success;
+  }, []);
+
   const deletePhoto = useCallback((photoId: string, folderId: string) => {
-    let removed = false;
+    let success = false;
+    let albumDeleted = false;
+
     setMyFolders((prev) => {
       const source = prev.find((f) => f.id === folderId);
-      if (!source?.photos.some((p) => p.id === photoId)) {
+      const photo = source?.photos.find((p) => p.id === photoId);
+      if (!source || !photo) {
         return prev;
       }
-      removed = true;
+
+      success = true;
+      const remaining = source.photos.filter((p) => p.id !== photoId);
+
+      if (remaining.length === 0) {
+        albumDeleted = true;
+        return prev.filter((f) => f.id !== folderId);
+      }
+
+      const coverStillValid = remaining.some((p) => p.imageUrl === source.coverUrl);
+      const nextCover = coverStillValid
+        ? source.coverUrl
+        : remaining[Math.floor(Math.random() * remaining.length)]!.imageUrl;
+
       return prev.map((folder) => {
         if (folder.id !== folderId) return folder;
-        return withUpdatedCover({
+        return {
           ...folder,
-          photos: folder.photos.filter((p) => p.id !== photoId),
-        });
+          coverUrl: nextCover,
+          photos: remaining,
+        };
       });
     });
 
-    if (removed) {
+    if (success) {
       setPosts((prev) => prev.filter((p) => p.id !== photoId));
     }
-    return removed;
+
+    return { success, albumDeleted };
   }, []);
 
   const updatePhoto = useCallback((photoId: string, folderId: string, updates: PhotoUpdateInput) => {
@@ -565,12 +645,16 @@ export function FeedProvider({ children }: { children: ReactNode }) {
       myProfile,
       favoriteAlbums,
       wishlistAlbums,
+      travelCompanions,
       addPost,
       createFolder,
       movePhoto,
       deletePhoto,
       updatePhoto,
+      setAlbumCover,
       updateProfile,
+      toggleTravelWith,
+      isTravelingWith,
       saveAlbumToFavorites,
       removeFavoriteAlbum,
       isAlbumFavorited,
@@ -592,12 +676,16 @@ export function FeedProvider({ children }: { children: ReactNode }) {
       myProfile,
       favoriteAlbums,
       wishlistAlbums,
+      travelCompanions,
       addPost,
       createFolder,
       movePhoto,
       deletePhoto,
       updatePhoto,
+      setAlbumCover,
       updateProfile,
+      toggleTravelWith,
+      isTravelingWith,
       saveAlbumToFavorites,
       removeFavoriteAlbum,
       isAlbumFavorited,
