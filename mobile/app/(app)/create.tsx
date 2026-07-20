@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     width: '100%',
-    backgroundColor: Colors.card,
+    backgroundColor: '#000000',
     borderRadius: 28,
     padding: 8,
     marginTop: 8,
@@ -345,6 +345,8 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 1,
     borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   previewFooter: {
     flexDirection: 'row',
@@ -376,7 +378,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(247, 244, 238, 0.85)',
     borderWidth: 1,
-    borderColor: 'rgba(60, 42, 30, 0.12)',
+    borderColor: 'rgba(0, 0, 0, 0.12)',
   },
   chipActive: {
     backgroundColor: Colors.card,

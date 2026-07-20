@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(61, 46, 34, 0.18)',
+    borderColor: 'rgba(0, 0, 0, 0.18)',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,

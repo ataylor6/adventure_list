@@ -3,12 +3,18 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppTabBar } from '@/components/AppTabBar';
 import { useAppMode } from '@/context/AppModeContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function AppLayout() {
   const { isWaitlist } = useAppMode();
+  const { isLoggedIn } = useAuth();
 
   if (isWaitlist) {
     return <Redirect href="/" />;
+  }
+
+  if (!isLoggedIn) {
+    return <Redirect href="/login" />;
   }
 
   return (

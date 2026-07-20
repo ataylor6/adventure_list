@@ -24,6 +24,11 @@ import {
   type AdventureCategory,
 } from '@/constants/adventureFeed';
 import { openNearbyFromLocation } from '@/utils/openNearby';
+import {
+  POST_REPORT_OPTIONS,
+  submitPostReport,
+  type PostReportReason,
+} from '@/utils/reportContent';
 
 function DetailRow({ label, value }: { label: string; value?: string }) {
   if (!value?.trim()) return null;
@@ -59,6 +64,8 @@ export default function PhotoDetailScreen() {
   const [creatingNew, setCreatingNew] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState('');
   const [wishlistOpen, setWishlistOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<PostReportReason | null>(null);
   const [editing, setEditing] = useState(false);
   const [editLocation, setEditLocation] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -229,17 +236,29 @@ export default function PhotoDetailScreen() {
               </Pressable>
             )
           ) : (
-            <Pressable
-              onPress={() => setWishlistOpen(true)}
-              hitSlop={12}
-              accessibilityLabel="Save to trip wishlist"
-            >
-              <Ionicons
-                name={inWishlist ? 'bookmark' : 'bookmark-outline'}
-                size={24}
-                color={Colors.text}
-              />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={() => setWishlistOpen(true)}
+                hitSlop={12}
+                accessibilityLabel="Save to trip wishlist"
+              >
+                <Ionicons
+                  name={inWishlist ? 'bookmark' : 'bookmark-outline'}
+                  size={24}
+                  color={Colors.text}
+                />
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setReportReason(null);
+                  setReportOpen(true);
+                }}
+                hitSlop={12}
+                accessibilityLabel="Report post"
+              >
+                <Ionicons name="flag-outline" size={22} color={Colors.text} />
+              </Pressable>
+            </View>
           )
         }
       />
@@ -509,16 +528,28 @@ export default function PhotoDetailScreen() {
         ) : null}
 
         {!isOwn ? (
-          <Pressable style={styles.wishlistBtn} onPress={() => setWishlistOpen(true)}>
-            <Ionicons
-              name={inWishlist ? 'bookmark' : 'bookmark-outline'}
-              size={18}
-              color={Colors.cream}
-            />
-            <Text style={styles.wishlistBtnText}>
-              {inWishlist ? 'Saved to trip wishlist' : 'Save to trip wishlist'}
-            </Text>
-          </Pressable>
+          <View style={styles.otherPostActions}>
+            <Pressable style={styles.wishlistBtn} onPress={() => setWishlistOpen(true)}>
+              <Ionicons
+                name={inWishlist ? 'bookmark' : 'bookmark-outline'}
+                size={18}
+                color={Colors.cream}
+              />
+              <Text style={styles.wishlistBtnText}>
+                {inWishlist ? 'Saved to trip wishlist' : 'Save to trip wishlist'}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={styles.reportPostBtn}
+              onPress={() => {
+                setReportReason(null);
+                setReportOpen(true);
+              }}
+              accessibilityLabel="Report post"
+            >
+              <Text style={styles.reportPostBtnText}>Report post</Text>
+            </Pressable>
+          </View>
         ) : null}
       </ScrollView>
 
@@ -529,6 +560,66 @@ export default function PhotoDetailScreen() {
         sourceFolderId={folderId}
         onClose={() => setWishlistOpen(false)}
       />
+
+      <Modal
+        visible={reportOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReportOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setReportOpen(false)}>
+          <Pressable style={styles.reportModalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.reportModalTitle}>Report post</Text>
+            <Text style={styles.reportModalBody}>
+              Why are you reporting this post from @{profile.username}?
+            </Text>
+
+            <View style={styles.reportOptionList}>
+              {POST_REPORT_OPTIONS.map((option) => {
+                const selected = reportReason === option.id;
+                return (
+                  <Pressable
+                    key={option.id}
+                    style={styles.reportOptionRow}
+                    onPress={() => setReportReason(option.id)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                  >
+                    <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
+                      {selected ? <View style={styles.radioInner} /> : null}
+                    </View>
+                    <Text style={styles.reportOptionLabel}>{option.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.reportModalActions}>
+              <Pressable
+                style={styles.reportCancelBtn}
+                onPress={() => setReportOpen(false)}
+              >
+                <Text style={styles.reportCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.reportSubmitBtn,
+                  !reportReason && styles.reportSubmitBtnDisabled,
+                ]}
+                disabled={!reportReason}
+                onPress={() => {
+                  if (!reportReason) return;
+                  setReportOpen(false);
+                  submitPostReport(reportReason);
+                  setReportReason(null);
+                }}
+              >
+                <Text style={styles.reportSubmitText}>Report</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={dropdownOpen}
@@ -585,7 +676,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   card: {
-    backgroundColor: Colors.card,
+    backgroundColor: '#000000',
     borderRadius: 28,
     padding: 8,
   },
@@ -593,6 +684,8 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 1,
     borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   locationRow: {
     flexDirection: 'row',
@@ -638,7 +731,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(247, 244, 238, 0.85)',
     borderWidth: 1,
-    borderColor: 'rgba(60, 42, 30, 0.12)',
+    borderColor: 'rgba(0, 0, 0, 0.12)',
   },
   tagChipActive: {
     backgroundColor: Colors.card,
@@ -653,7 +746,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(247, 244, 238, 0.85)',
     borderWidth: 1,
-    borderColor: 'rgba(60, 42, 30, 0.12)',
+    borderColor: 'rgba(0, 0, 0, 0.12)',
   },
   tagChipText: {
     fontSize: 13,
@@ -836,9 +929,112 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  otherPostActions: {
+    gap: 8,
+  },
+  reportPostBtn: {
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportPostBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  reportModalCard: {
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 18,
+    gap: 10,
+  },
+  reportModalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  reportModalBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.textSecondary,
+  },
+  reportOptionList: {
+    gap: 4,
+    marginTop: 4,
+  },
+  reportOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 0, 0, 0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterSelected: {
+    borderColor: Colors.accentBlue,
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.accentBlue,
+  },
+  reportOptionLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  reportModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  reportCancelBtn: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  reportSubmitBtn: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: Colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportSubmitBtnDisabled: {
+    opacity: 0.4,
+  },
+  reportSubmitText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.cream,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(20, 16, 12, 0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     paddingHorizontal: 28,
   },
