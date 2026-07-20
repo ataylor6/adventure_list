@@ -155,7 +155,9 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 28,
     overflow: 'hidden',
-    backgroundColor: Colors.card,
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   image: {
     width: '100%',
@@ -167,7 +169,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: Colors.card,
+    backgroundColor: '#000000',
   },
   locationText: {
     flex: 1,
@@ -212,7 +214,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(61, 46, 34, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
   secondaryBtnText: {
     fontSize: 15,

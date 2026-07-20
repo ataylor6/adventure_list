@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: 'rgba(61, 46, 34, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
   tabActive: {
     backgroundColor: Colors.card,
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(30, 22, 16, 0.28)',
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
   },
   tileMeta: {
     position: 'absolute',
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(61, 46, 34, 0.18)',
+    borderColor: 'rgba(0, 0, 0, 0.18)',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,

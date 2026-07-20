@@ -11,52 +11,47 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppMode } from '@/context/AppModeContext';
-import { api } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 
-export default function AdventureListSignupScreen() {
-  const { isFullApp } = useAppMode();
-  const [email, setEmail] = useState('');
+export default function LoginScreen() {
+  const { isWaitlist } = useAppMode();
+  const { isLoggedIn, login } = useAuth();
+  const router = useRouter();
   const [handle, setHandle] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  if (isFullApp) {
-    return <Redirect href="/login" />;
+  if (isWaitlist) {
+    return <Redirect href="/" />;
   }
 
-  const onRequestAccount = async () => {
-    const trimmedEmail = email.trim();
+  if (isLoggedIn) {
+    return <Redirect href="/(app)/home" />;
+  }
+
+  const onLogin = async () => {
     const trimmedHandle = handle.trim().replace(/^@/, '');
 
-    if (!trimmedEmail || !trimmedEmail.includes('@')) {
-      Alert.alert('Email required', 'Please enter a valid email address.');
-      return;
-    }
     if (!trimmedHandle) {
-      Alert.alert('Handle required', 'Please choose an account handle.');
+      Alert.alert('Handle required', 'Please enter your account handle.');
       return;
     }
-    if (submitting || submitted) {
+    if (!password.trim()) {
+      Alert.alert('Password required', 'Please enter your password.');
       return;
     }
+    if (submitting) return;
 
     setSubmitting(true);
     try {
-      await api.createBetaLead(trimmedEmail, trimmedHandle);
-      setSubmitted(true);
-      Alert.alert(
-        "You're on the list!",
-        `We'll email ${trimmedEmail} when Adventure List is ready for @${trimmedHandle} to test.`,
-      );
-    } catch (e) {
-      Alert.alert(
-        'Could not sign up',
-        e instanceof Error ? e.message : 'Something went wrong. Try again.',
-      );
+      // Mock auth — accept any credentials for beta testing
+      await new Promise((r) => setTimeout(r, 400));
+      login(trimmedHandle);
+      router.replace('/(app)/home');
     } finally {
       setSubmitting(false);
     }
@@ -68,7 +63,6 @@ export default function AdventureListSignupScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Top 2/3 — image */}
         <View style={styles.logoWrap}>
           <Image
             source={require('../assets/adventure-list-logo.png')}
@@ -78,29 +72,12 @@ export default function AdventureListSignupScreen() {
           />
         </View>
 
-        {/* Bottom 1/3 — copy + form */}
         <View style={styles.bottom}>
           <Text style={styles.pitch}>
-            Sign up to be a beta tester and get updates when the app is ready for you
-            to test!
+            Welcome back — log in to explore adventures and plan your next trip.
           </Text>
 
           <View style={styles.form}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@email.com"
-              placeholderTextColor="#9A9A9A"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-              returnKeyType="next"
-            />
-
             <Text style={styles.label}>Account handle</Text>
             <View style={styles.handleRow}>
               <Text style={styles.at}>@</Text>
@@ -114,26 +91,39 @@ export default function AdventureListSignupScreen() {
                 autoCorrect={false}
                 autoComplete="username"
                 textContentType="username"
-                returnKeyType="done"
-                onSubmitEditing={onRequestAccount}
+                returnKeyType="next"
               />
             </View>
+
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              placeholderTextColor="#9A9A9A"
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="password"
+              textContentType="password"
+              returnKeyType="done"
+              onSubmitEditing={onLogin}
+            />
 
             <Pressable
               style={({ pressed }) => [
                 styles.button,
                 pressed && styles.buttonPressed,
-                (submitted || submitting) && styles.buttonDone,
+                submitting && styles.buttonDone,
               ]}
-              onPress={onRequestAccount}
-              disabled={submitting || submitted}
+              onPress={onLogin}
+              disabled={submitting}
             >
               {submitting ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.buttonText}>
-                  {submitted ? 'Request sent' : 'Request account'}
-                </Text>
+                <Text style={styles.buttonText}>Log in</Text>
               )}
             </Pressable>
           </View>
@@ -151,7 +141,6 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  // flex: 2 + flex: 1 = top 2/3, bottom 1/3 of *available* space (after safe area)
   logoWrap: {
     flex: 2,
     width: '100%',
@@ -221,7 +210,7 @@ const styles = StyleSheet.create({
     opacity: 0.88,
   },
   buttonDone: {
-    backgroundColor: '#3D5A4A',
+    backgroundColor: 'rgba(90, 200, 250, 0.55)',
   },
   buttonText: {
     color: '#FFFFFF',

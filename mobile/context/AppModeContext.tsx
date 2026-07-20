@@ -10,6 +10,7 @@ import {
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import type { AppMode } from '@/constants/config';
+import { Colors } from '@/constants/theme';
 import { api } from '@/services/api';
 
 type AppModeContextValue = {
@@ -54,7 +55,7 @@ export function AppModeProvider({ children }: { children: ReactNode }) {
   if (!value) {
     return (
       <View style={styles.boot}>
-        <ActivityIndicator size="large" color="#1C2B24" />
+        <ActivityIndicator size="large" color={Colors.accentBlue} />
         <Text style={styles.bootText}>Connecting…</Text>
         {error ? <Text style={styles.bootError}>{error}</Text> : null}
       </View>

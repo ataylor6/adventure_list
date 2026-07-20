@@ -18,7 +18,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { AdventureFolder, PublicProfile } from '@/constants/profileFolders';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useFeed } from '@/context/FeedContext';
+import { reportProfile } from '@/utils/reportContent';
 
 type Props = {
   profile: PublicProfile;
@@ -61,6 +63,7 @@ function FolderTile({
 
 export function ProfileFoldersView({ profile, showBack = false }: Props) {
   const router = useRouter();
+  const { logout } = useAuth();
   const {
     user,
     updateProfile,
@@ -81,6 +84,7 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
     .filter((p): p is PublicProfile => Boolean(p));
 
   const [editOpen, setEditOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [editName, setEditName] = useState(profile.displayName);
   const [editBio, setEditBio] = useState(profile.bio);
   const [editAvatar, setEditAvatar] = useState(profile.avatarUrl);
@@ -91,6 +95,12 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
     setEditBio(profile.bio);
     setEditAvatar(profile.avatarUrl);
     setEditOpen(true);
+  };
+
+  const onSignOut = () => {
+    setAccountMenuOpen(false);
+    logout();
+    router.replace('/login');
   };
 
   const onTravelWith = () => {
@@ -146,7 +156,19 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
         ) : (
           <View style={styles.backBtn} />
         )}
-        <Text style={styles.topUsername}>@{profile.username}</Text>
+        {isOwn ? (
+          <Pressable
+            style={styles.usernameBtn}
+            onPress={() => setAccountMenuOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Account menu"
+          >
+            <Text style={styles.topUsername}>@{profile.username}</Text>
+            <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
+          </Pressable>
+        ) : (
+          <Text style={styles.topUsername}>@{profile.username}</Text>
+        )}
         {isOwn ? (
           <View style={styles.topActions}>
             <Pressable
@@ -163,7 +185,27 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
               style={styles.iconBtn}
               accessibilityLabel="Open saved favorites and trip wishlists"
             >
-              <Ionicons name="bookmark" size={22} color={Colors.text} />
+              <View style={styles.savedIcon}>
+                {[
+                  [-1.4, 0],
+                  [1.4, 0],
+                  [0, -1.4],
+                  [0, 1.4],
+                  [-1, -1],
+                  [1, -1],
+                  [-1, 1],
+                  [1, 1],
+                ].map(([dx, dy]) => (
+                  <Ionicons
+                    key={`${dx},${dy}`}
+                    name="bookmark"
+                    size={22}
+                    color="rgba(0, 0, 0, 0.15)"
+                    style={[styles.savedIconStroke, { left: dx, top: dy }]}
+                  />
+                ))}
+                <Ionicons name="bookmark" size={22} color={Colors.accentBlue} />
+              </View>
             </Pressable>
           </View>
         ) : (
@@ -207,19 +249,28 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
             </View>
 
             {!isOwn ? (
-              <Pressable
-                style={[styles.travelBtn, travelingWith && styles.travelBtnActive]}
-                onPress={onTravelWith}
-              >
-                <Ionicons
-                  name={travelingWith ? 'people' : 'people-outline'}
-                  size={18}
-                  color={travelingWith ? Colors.cream : Colors.text}
-                />
-                <Text style={[styles.travelBtnText, travelingWith && styles.travelBtnTextActive]}>
-                  {travelingWith ? 'Traveling with' : 'Travel with'}
-                </Text>
-              </Pressable>
+              <View style={styles.otherActions}>
+                <Pressable
+                  style={[styles.travelBtn, travelingWith && styles.travelBtnActive]}
+                  onPress={onTravelWith}
+                >
+                  <Ionicons
+                    name={travelingWith ? 'people' : 'people-outline'}
+                    size={18}
+                    color={travelingWith ? Colors.cream : Colors.text}
+                  />
+                  <Text style={[styles.travelBtnText, travelingWith && styles.travelBtnTextActive]}>
+                    {travelingWith ? 'Traveling with' : 'Travel with'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={styles.reportBtn}
+                  onPress={() => reportProfile(profile.username)}
+                  accessibilityLabel={`Report @${profile.username} for inappropriate content`}
+                >
+                  <Text style={styles.reportBtnText}>Report for inappropriate content</Text>
+                </Pressable>
+              </View>
             ) : null}
 
             {isOwn && companions.length > 0 ? (
@@ -258,6 +309,23 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
         ListEmptyComponent={<Text style={styles.empty}>No folders yet.</Text>}
         showsVerticalScrollIndicator={false}
       />
+
+      <Modal
+        visible={accountMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAccountMenuOpen(false)}
+      >
+        <Pressable style={styles.menuBackdrop} onPress={() => setAccountMenuOpen(false)}>
+          <SafeAreaView edges={['top']} style={styles.menuSafe}>
+            <Pressable style={styles.accountMenu} onPress={(e) => e.stopPropagation()}>
+              <Pressable style={styles.accountMenuRow} onPress={onSignOut}>
+                <Text style={styles.accountMenuRowText}>Sign out</Text>
+              </Pressable>
+            </Pressable>
+          </SafeAreaView>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={editOpen}
@@ -341,9 +409,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  savedIcon: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  savedIconStroke: {
+    position: 'absolute',
+  },
   topUsername: {
     fontSize: 16,
     fontWeight: '700',
+    color: Colors.text,
+  },
+  usernameBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+  },
+  menuSafe: {
+    paddingHorizontal: 16,
+    paddingTop: 44,
+    alignItems: 'center',
+  },
+  accountMenu: {
+    minWidth: 140,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    padding: 6,
+    shadowColor: '#000000',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  accountMenuRow: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  accountMenuRowText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: Colors.text,
   },
   header: {
@@ -359,12 +471,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   travelBtn: {
-    marginHorizontal: 14,
     height: 44,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(60, 42, 30, 0.18)',
-    backgroundColor: 'rgba(247, 244, 238, 0.9)',
+    borderColor: 'rgba(0, 0, 0, 0.18)',
+    backgroundColor: Colors.background,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -381,6 +492,21 @@ const styles = StyleSheet.create({
   },
   travelBtnTextActive: {
     color: Colors.cream,
+  },
+  otherActions: {
+    marginHorizontal: 14,
+    gap: 8,
+  },
+  reportBtn: {
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textSecondary,
   },
   companionsSection: {
     paddingHorizontal: 14,
@@ -408,7 +534,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(247, 244, 238, 0.9)',
     borderWidth: 1,
-    borderColor: 'rgba(60, 42, 30, 0.12)',
+    borderColor: 'rgba(0, 0, 0, 0.12)',
     maxWidth: '100%',
   },
   companionAvatar: {
@@ -429,8 +555,8 @@ const styles = StyleSheet.create({
     width: 86,
     height: 86,
     borderRadius: 43,
-    borderWidth: 3,
-    borderColor: Colors.card,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.3)',
   },
   avatarEditBadge: {
     position: 'absolute',
@@ -473,7 +599,7 @@ const styles = StyleSheet.create({
   },
   folderScrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(30, 22, 16, 0.28)',
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
   },
   folderMeta: {
     position: 'absolute',
