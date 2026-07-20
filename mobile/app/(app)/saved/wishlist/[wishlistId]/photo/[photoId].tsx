@@ -94,14 +94,14 @@ export default function WishlistPhotoScreen() {
         ) : null}
 
         {hasDescription ? (
-          <View style={styles.section}>
+          <View style={[styles.section, styles.descriptionSection]}>
             <Text style={styles.sectionTitle}>Description</Text>
             <Text style={styles.description}>{photo.description}</Text>
           </View>
         ) : null}
 
         {hasExtras ? (
-          <View style={styles.section}>
+          <View style={[styles.section, styles.descriptionSection]}>
             <Text style={styles.sectionTitle}>This adventure</Text>
             <DetailRow label="Stayed" value={photo.stayed} />
             <DetailRow label="At" value={photo.at} />
@@ -184,6 +184,13 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: 8,
+  },
+  descriptionSection: {
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: Colors.accentBlueFaded,
+    borderWidth: 1,
+    borderColor: Colors.accentBlueFadedBorder,
   },
   sectionTitle: {
     fontSize: 15,

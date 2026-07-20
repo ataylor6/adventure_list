@@ -185,15 +185,15 @@ export default function CreateScreen() {
                   return (
                     <Pressable
                       key={item.id}
-                      style={[styles.chip, active && styles.chipActive]}
+                      style={[styles.chip, active && styles.tagChipActive]}
                       onPress={() => toggleTag(item.id)}
                     >
                       <Ionicons
                         name={item.icon}
                         size={16}
-                        color={active ? Colors.cream : Colors.text}
+                        color={Colors.text}
                       />
-                      <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                      <Text style={[styles.chipText, active && styles.tagChipTextActive]}>
                         {item.label}
                       </Text>
                     </Pressable>
@@ -236,7 +236,7 @@ export default function CreateScreen() {
 
               <Text style={styles.label}>Description (optional)</Text>
               <TextInput
-                style={[styles.input, styles.multiline]}
+                style={[styles.input, styles.multiline, styles.descriptionInput]}
                 value={description}
                 onChangeText={setDescription}
                 placeholder="What made this moment?"
@@ -245,43 +245,45 @@ export default function CreateScreen() {
                 textAlignVertical="top"
               />
 
-              <Text style={styles.sectionTitle}>This adventure (optional)</Text>
+              <View style={styles.adventureSection}>
+                <Text style={styles.sectionTitle}>This adventure (optional)</Text>
 
-              <Text style={styles.label}>Stayed</Text>
-              <TextInput
-                style={styles.input}
-                value={stayed}
-                onChangeText={setStayed}
-                placeholder="Where did you stay?"
-                placeholderTextColor="#8A837A"
-              />
+                <Text style={styles.label}>Stayed</Text>
+                <TextInput
+                  style={[styles.input, styles.adventureInput]}
+                  value={stayed}
+                  onChangeText={setStayed}
+                  placeholder="Where did you stay?"
+                  placeholderTextColor="#8A837A"
+                />
 
-              <Text style={styles.label}>At</Text>
-              <TextInput
-                style={styles.input}
-                value={at}
-                onChangeText={setAt}
-                placeholder="Where were you in the moment?"
-                placeholderTextColor="#8A837A"
-              />
+                <Text style={styles.label}>At</Text>
+                <TextInput
+                  style={[styles.input, styles.adventureInput]}
+                  value={at}
+                  onChangeText={setAt}
+                  placeholder="Where were you in the moment?"
+                  placeholderTextColor="#8A837A"
+                />
 
-              <Text style={styles.label}>Listened to</Text>
-              <TextInput
-                style={styles.input}
-                value={listenedTo}
-                onChangeText={setListenedTo}
-                placeholder="Music, sounds, silence…"
-                placeholderTextColor="#8A837A"
-              />
+                <Text style={styles.label}>Listened to</Text>
+                <TextInput
+                  style={[styles.input, styles.adventureInput]}
+                  value={listenedTo}
+                  onChangeText={setListenedTo}
+                  placeholder="Music, sounds, silence…"
+                  placeholderTextColor="#8A837A"
+                />
 
-              <Text style={styles.label}>Wore</Text>
-              <TextInput
-                style={styles.input}
-                value={wore}
-                onChangeText={setWore}
-                placeholder="What were you wearing?"
-                placeholderTextColor="#8A837A"
-              />
+                <Text style={styles.label}>Wore</Text>
+                <TextInput
+                  style={[styles.input, styles.adventureInput]}
+                  value={wore}
+                  onChangeText={setWore}
+                  placeholder="What were you wearing?"
+                  placeholderTextColor="#8A837A"
+                />
+              </View>
 
               <Pressable
                 style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
@@ -384,6 +386,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderColor: Colors.card,
   },
+  tagChipActive: {
+    backgroundColor: Colors.accentBlue,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.15)',
+  },
   chipText: {
     fontSize: 14,
     fontWeight: '600',
@@ -391,6 +398,9 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: Colors.cream,
+  },
+  tagChipTextActive: {
+    color: Colors.text,
   },
   sectionTitle: {
     alignSelf: 'stretch',
@@ -430,6 +440,24 @@ const styles = StyleSheet.create({
   },
   multiline: {
     minHeight: 96,
+  },
+  descriptionInput: {
+    backgroundColor: Colors.accentBlueFaded,
+    borderColor: Colors.accentBlueFadedBorder,
+  },
+  adventureSection: {
+    alignSelf: 'stretch',
+    marginTop: 8,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: Colors.accentBlueFaded,
+    borderWidth: 1,
+    borderColor: Colors.accentBlueFadedBorder,
+    gap: 2,
+  },
+  adventureInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderColor: Colors.accentBlueFadedBorder,
   },
   button: {
     marginTop: 14,
