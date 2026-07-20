@@ -25,7 +25,7 @@ export default function AdventureListSignupScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   if (isFullApp) {
-    return <Redirect href="/(tabs)/home" />;
+    return <Redirect href="/(app)/home" />;
   }
 
   const onRequestAccount = async () => {
