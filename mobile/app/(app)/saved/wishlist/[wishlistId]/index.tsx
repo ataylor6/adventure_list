@@ -4,9 +4,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MissingState } from '@/components/MissingState';
 import { Colors } from '@/constants/theme';
 import { useFeed } from '@/context/FeedContext';
-import { MissingState } from '@/components/MissingState';
 
 export default function WishlistAlbumScreen() {
   const router = useRouter();
@@ -37,7 +37,20 @@ export default function WishlistAlbumScreen() {
             {album.photos.length} save{album.photos.length === 1 ? '' : 's'}
           </Text>
         </View>
-        <View style={styles.backBtn} />
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: '/saved/wishlist/[wishlistId]/export',
+              params: { wishlistId: album.id },
+            })
+          }
+          hitSlop={12}
+          style={styles.exportBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Edit and export itinerary"
+        >
+          <Ionicons name="share-outline" size={24} color={Colors.text} />
+        </Pressable>
       </View>
 
       <FlatList
@@ -87,6 +100,11 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 40,
+  },
+  exportBtn: {
+    width: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   topCenter: {
     flex: 1,

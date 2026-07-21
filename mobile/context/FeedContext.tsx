@@ -13,11 +13,13 @@ import {
   type AdventureCategory,
   type AdventurePost,
   type CurrentUser,
+  type FeedMode,
 } from '@/constants/adventureFeed';
 import {
   PROFILES,
   type AdventureFolder,
   type FolderPhoto,
+  type ProfileSocialLink,
   type PublicProfile,
   getProfile as getStaticProfile,
 } from '@/constants/profileFolders';
@@ -27,6 +29,7 @@ type NewPostInput = {
   location: string;
   tags: AdventureCategory[];
   folderId: string;
+  feedMode?: FeedMode;
   latitude?: number;
   longitude?: number;
   description?: string;
@@ -74,6 +77,7 @@ type ProfileUpdateInput = {
   displayName?: string;
   bio?: string;
   avatarUrl?: string;
+  socialLinks?: ProfileSocialLink[];
 };
 
 type FeedContextValue = {
@@ -167,6 +171,9 @@ export function FeedProvider({ children }: { children: ReactNode }) {
   const [displayName, setDisplayName] = useState(CURRENT_USER.displayName);
   const [avatarUrl, setAvatarUrl] = useState(CURRENT_USER.avatarUrl);
   const [bio, setBio] = useState(PROFILES.ashtay427?.bio ?? '');
+  const [socialLinks, setSocialLinks] = useState<ProfileSocialLink[]>(
+    PROFILES.ashtay427?.socialLinks ?? [],
+  );
   const [travelCompanions, setTravelCompanions] = useState<string[]>([]);
 
   const user = useMemo<CurrentUser>(
@@ -184,9 +191,10 @@ export function FeedProvider({ children }: { children: ReactNode }) {
       displayName,
       avatarUrl,
       bio,
+      socialLinks,
       folders: myFolders,
     }),
-    [myFolders, displayName, avatarUrl, bio],
+    [myFolders, displayName, avatarUrl, bio, socialLinks],
   );
 
   const resolveProfile = useCallback(
@@ -232,6 +240,7 @@ export function FeedProvider({ children }: { children: ReactNode }) {
         location: input.location.trim(),
         username: CURRENT_USER.username,
         avatarUrl,
+        feedMode: input.feedMode ?? 'travel',
         tags,
         latitude: input.latitude,
         longitude: input.longitude,
@@ -279,6 +288,16 @@ export function FeedProvider({ children }: { children: ReactNode }) {
     }
     if (updates.bio !== undefined) {
       setBio(updates.bio.trim());
+    }
+    if (updates.socialLinks !== undefined) {
+      setSocialLinks(
+        updates.socialLinks
+          .map((link) => ({
+            platform: link.platform,
+            handle: link.handle.trim(),
+          }))
+          .filter((link) => link.handle.length > 0),
+      );
     }
     if (updates.avatarUrl !== undefined) {
       const next = updates.avatarUrl.trim();

@@ -17,22 +17,23 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { AdventureCategory } from '@/constants/adventureFeed';
-import { ADVENTURE_CATEGORIES } from '@/constants/adventureFeed';
+import type { AdventureCategory, FeedMode } from '@/constants/adventureFeed';
+import { categoriesForMode } from '@/constants/adventureFeed';
 import { Colors } from '@/constants/theme';
+import { useExploreMode } from '@/context/ExploreModeContext';
 import { useFeed } from '@/context/FeedContext';
 import { locationLabelFromExif, coordsFromExif } from '@/utils/photoLocation';
 import { coordsFromPlaceLabel } from '@/utils/geo';
 
-const CATEGORIES = ADVENTURE_CATEGORIES;
-
 export default function CreateScreen() {
   const { addPost, user, myFolders } = useFeed();
+  const { mode: exploreMode } = useExploreMode();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [location, setLocation] = useState('');
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [feedMode, setFeedMode] = useState<FeedMode>(exploreMode);
   const [tags, setTags] = useState<AdventureCategory[]>([]);
   const [folderId, setFolderId] = useState<string | null>(myFolders[0]?.id ?? null);
   const [description, setDescription] = useState('');
@@ -40,6 +41,8 @@ export default function CreateScreen() {
   const [at, setAt] = useState('');
   const [listenedTo, setListenedTo] = useState('');
   const [wore, setWore] = useState('');
+
+  const categories = categoriesForMode(feedMode);
 
   const resetDraft = () => {
     setImageUri(null);
@@ -52,6 +55,12 @@ export default function CreateScreen() {
     setAt('');
     setListenedTo('');
     setWore('');
+    setFeedMode(exploreMode);
+  };
+
+  const setMode = (next: FeedMode) => {
+    setFeedMode(next);
+    setTags([]);
   };
 
   const toggleTag = (id: AdventureCategory) => {
@@ -116,6 +125,7 @@ export default function CreateScreen() {
       location: trimmedLocation,
       tags,
       folderId,
+      feedMode,
       latitude: resolved?.latitude,
       longitude: resolved?.longitude,
       description,
@@ -177,10 +187,33 @@ export default function CreateScreen() {
                 </View>
               </View>
 
+              <Text style={styles.label}>Post type</Text>
+              <View style={styles.categoryRow}>
+                {(['local', 'travel'] as FeedMode[]).map((option) => {
+                  const active = feedMode === option;
+                  return (
+                    <Pressable
+                      key={option}
+                      style={[styles.chip, active && styles.tagChipActive]}
+                      onPress={() => setMode(option)}
+                    >
+                      <Ionicons
+                        name={option === 'local' ? 'home-outline' : 'airplane-outline'}
+                        size={16}
+                        color={Colors.text}
+                      />
+                      <Text style={[styles.chipText, active && styles.tagChipTextActive]}>
+                        {option === 'local' ? 'Local' : 'Travel'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
               <Text style={styles.label}>Tags</Text>
               <Text style={styles.helper}>Select one or more</Text>
               <View style={styles.categoryRow}>
-                {CATEGORIES.map((item) => {
+                {categories.map((item) => {
                   const active = tags.includes(item.id);
                   return (
                     <Pressable

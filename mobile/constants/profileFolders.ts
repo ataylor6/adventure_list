@@ -26,8 +26,37 @@ export type PublicProfile = {
   displayName: string;
   avatarUrl: string;
   bio: string;
+  socialLinks?: ProfileSocialLink[];
   folders: AdventureFolder[];
 };
+
+export type SocialPlatformId =
+  | 'tiktok'
+  | 'instagram'
+  | 'etsy'
+  | 'alltrails'
+  | 'strava';
+
+export type ProfileSocialLink = {
+  platform: SocialPlatformId;
+  handle: string;
+};
+
+export const SOCIAL_PLATFORMS: {
+  id: SocialPlatformId;
+  label: string;
+  placeholder: string;
+}[] = [
+  { id: 'tiktok', label: 'TikTok', placeholder: '@username' },
+  { id: 'instagram', label: 'Instagram', placeholder: '@username' },
+  { id: 'etsy', label: 'Etsy', placeholder: 'shop name or URL' },
+  { id: 'alltrails', label: 'AllTrails', placeholder: 'username' },
+  { id: 'strava', label: 'Strava', placeholder: 'athlete name or URL' },
+];
+
+export function socialPlatformLabel(id: SocialPlatformId): string {
+  return SOCIAL_PLATFORMS.find((p) => p.id === id)?.label ?? id;
+}
 
 const img = (id: string, w = 800) =>
   `https://images.unsplash.com/${id}?w=${w}&q=80`;

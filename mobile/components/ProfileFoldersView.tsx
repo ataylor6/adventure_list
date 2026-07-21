@@ -6,8 +6,11 @@ import { useState } from 'react';
 import {
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,7 +19,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { AdventureFolder, PublicProfile } from '@/constants/profileFolders';
+import type {
+  AdventureFolder,
+  ProfileSocialLink,
+  PublicProfile,
+  SocialPlatformId,
+} from '@/constants/profileFolders';
+import { SOCIAL_PLATFORMS } from '@/constants/profileFolders';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useFeed } from '@/context/FeedContext';
@@ -85,16 +94,41 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
 
   const [editOpen, setEditOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [socialMenuOpen, setSocialMenuOpen] = useState(false);
   const [editName, setEditName] = useState(profile.displayName);
   const [editBio, setEditBio] = useState(profile.bio);
   const [editAvatar, setEditAvatar] = useState(profile.avatarUrl);
+  const [editSocialLinks, setEditSocialLinks] = useState<ProfileSocialLink[]>(
+    profile.socialLinks ?? [],
+  );
   const [picking, setPicking] = useState(false);
 
   const openEdit = () => {
     setEditName(profile.displayName);
     setEditBio(profile.bio);
     setEditAvatar(profile.avatarUrl);
+    setEditSocialLinks(profile.socialLinks ?? []);
+    setSocialMenuOpen(false);
     setEditOpen(true);
+  };
+
+  const availablePlatforms = SOCIAL_PLATFORMS.filter(
+    (platform) => !editSocialLinks.some((link) => link.platform === platform.id),
+  );
+
+  const addSocialLink = (platform: SocialPlatformId) => {
+    setEditSocialLinks((prev) => [...prev, { platform, handle: '' }]);
+    setSocialMenuOpen(false);
+  };
+
+  const updateSocialHandle = (platform: SocialPlatformId, handle: string) => {
+    setEditSocialLinks((prev) =>
+      prev.map((link) => (link.platform === platform ? { ...link, handle } : link)),
+    );
+  };
+
+  const removeSocialLink = (platform: SocialPlatformId) => {
+    setEditSocialLinks((prev) => prev.filter((link) => link.platform !== platform));
   };
 
   const onSignOut = () => {
@@ -142,6 +176,7 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
       displayName: editName,
       bio: editBio,
       avatarUrl: editAvatar,
+      socialLinks: editSocialLinks,
     });
     setEditOpen(false);
   };
@@ -241,6 +276,15 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
               <View style={styles.headerText}>
                 <Text style={styles.displayName}>{profile.displayName}</Text>
                 <Text style={styles.bio}>{profile.bio || 'No bio yet.'}</Text>
+                {(profile.socialLinks ?? []).length > 0 ? (
+                  <View style={styles.socialList}>
+                    {(profile.socialLinks ?? []).map((link) => (
+                      <Text key={link.platform} style={styles.socialLine}>
+                        {link.platform}: {link.handle}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
                 <Text style={styles.folderHint}>
                   {profile.folders.length} adventure folder
                   {profile.folders.length === 1 ? '' : 's'}
@@ -331,52 +375,157 @@ export function ProfileFoldersView({ profile, showBack = false }: Props) {
         visible={editOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setEditOpen(false)}
+        onRequestClose={() => {
+          if (socialMenuOpen) {
+            setSocialMenuOpen(false);
+            return;
+          }
+          setEditOpen(false);
+        }}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setEditOpen(false)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Edit profile</Text>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => {
+              if (socialMenuOpen) {
+                setSocialMenuOpen(false);
+                return;
+              }
+              setEditOpen(false);
+            }}
+          >
+            <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+              {socialMenuOpen ? (
+                <View>
+                  <Text style={styles.socialPickerTitle}>Add social</Text>
+                  <ScrollView bounces={false} style={styles.socialPickerList}>
+                    {availablePlatforms.map((platform) => (
+                      <Pressable
+                        key={platform.id}
+                        style={styles.socialDropdownRow}
+                        onPress={() => addSocialLink(platform.id)}
+                      >
+                        <Text style={styles.socialDropdownText}>{platform.label}</Text>
+                        <Ionicons name="add" size={18} color={Colors.textSecondary} />
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                  <Pressable
+                    style={styles.socialPickerCancel}
+                    onPress={() => setSocialMenuOpen(false)}
+                  >
+                    <Text style={styles.secondaryBtnText}>Back</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.modalScroll}
+                >
+                  <Text style={styles.modalTitle}>Edit profile</Text>
 
-            <Pressable style={styles.avatarPicker} onPress={pickAvatar} disabled={picking}>
-              <Image source={{ uri: editAvatar }} style={styles.editAvatar} contentFit="cover" />
-              <View style={styles.avatarPickerLabel}>
-                <Ionicons name="camera-outline" size={16} color={Colors.card} />
-                <Text style={styles.avatarPickerText}>
-                  {picking ? 'Opening…' : 'Change photo'}
-                </Text>
-              </View>
+                  <Pressable style={styles.avatarPicker} onPress={pickAvatar} disabled={picking}>
+                    <Image
+                      source={{ uri: editAvatar }}
+                      style={styles.editAvatar}
+                      contentFit="cover"
+                    />
+                    <View style={styles.avatarPickerLabel}>
+                      <Ionicons name="camera-outline" size={16} color={Colors.card} />
+                      <Text style={styles.avatarPickerText}>
+                        {picking ? 'Opening…' : 'Change photo'}
+                      </Text>
+                    </View>
+                  </Pressable>
+
+                  <Text style={styles.label}>Display name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editName}
+                    onChangeText={setEditName}
+                    placeholder="Your name"
+                    placeholderTextColor="#8A837A"
+                  />
+
+                  <Text style={styles.label}>Bio</Text>
+                  <TextInput
+                    style={[styles.input, styles.inputMultiline]}
+                    value={editBio}
+                    onChangeText={setEditBio}
+                    placeholder="A short description of your adventures"
+                    placeholderTextColor="#8A837A"
+                    multiline
+                    textAlignVertical="top"
+                  />
+
+                  <View style={styles.socialHeader}>
+                    <Text style={styles.label}>Socials</Text>
+                    <Pressable
+                      style={[
+                        styles.addSocialBtn,
+                        availablePlatforms.length === 0 && styles.addSocialBtnDisabled,
+                      ]}
+                      onPress={() => setSocialMenuOpen(true)}
+                      disabled={availablePlatforms.length === 0}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add social media"
+                    >
+                      <Ionicons name="add" size={18} color={Colors.cream} />
+                    </Pressable>
+                  </View>
+
+                  {editSocialLinks.length === 0 ? (
+                    <Text style={styles.socialEmpty}>
+                      Tap + to add TikTok, Instagram, Etsy, AllTrails, or Strava.
+                    </Text>
+                  ) : (
+                    editSocialLinks.map((link) => {
+                      const meta = SOCIAL_PLATFORMS.find((p) => p.id === link.platform);
+                      return (
+                        <View key={link.platform} style={styles.socialEditRow}>
+                          <Text style={styles.socialEditLabel}>{link.platform}:</Text>
+                          <TextInput
+                            style={styles.socialEditInput}
+                            value={link.handle}
+                            onChangeText={(value) => updateSocialHandle(link.platform, value)}
+                            placeholder={meta?.placeholder ?? 'your info'}
+                            placeholderTextColor="#8A837A"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                          />
+                          <Pressable
+                            onPress={() => removeSocialLink(link.platform)}
+                            hitSlop={8}
+                            accessibilityLabel={`Remove ${link.platform}`}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={18}
+                              color={Colors.textSecondary}
+                            />
+                          </Pressable>
+                        </View>
+                      );
+                    })
+                  )}
+
+                  <View style={styles.modalActions}>
+                    <Pressable style={styles.secondaryBtn} onPress={() => setEditOpen(false)}>
+                      <Text style={styles.secondaryBtnText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable style={styles.primaryBtn} onPress={saveProfile}>
+                      <Text style={styles.primaryBtnText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </ScrollView>
+              )}
             </Pressable>
-
-            <Text style={styles.label}>Display name</Text>
-            <TextInput
-              style={styles.input}
-              value={editName}
-              onChangeText={setEditName}
-              placeholder="Your name"
-              placeholderTextColor="#8A837A"
-            />
-
-            <Text style={styles.label}>Bio</Text>
-            <TextInput
-              style={[styles.input, styles.inputMultiline]}
-              value={editBio}
-              onChangeText={setEditBio}
-              placeholder="A short description of your adventures"
-              placeholderTextColor="#8A837A"
-              multiline
-              textAlignVertical="top"
-            />
-
-            <View style={styles.modalActions}>
-              <Pressable style={styles.secondaryBtn} onPress={() => setEditOpen(false)}>
-                <Text style={styles.secondaryBtnText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.primaryBtn} onPress={saveProfile}>
-                <Text style={styles.primaryBtnText}>Save</Text>
-              </Pressable>
-            </View>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -583,6 +732,15 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: Colors.textSecondary,
   },
+  socialList: {
+    marginTop: 4,
+    gap: 2,
+  },
+  socialLine: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+  },
   folderHint: {
     marginTop: 4,
     fontSize: 13,
@@ -623,6 +781,9 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 40,
   },
+  modalRoot: {
+    flex: 1,
+  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -633,7 +794,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderRadius: 16,
     padding: 18,
+    maxHeight: '88%',
+  },
+  modalScroll: {
     gap: 10,
+    paddingBottom: 4,
   },
   modalTitle: {
     fontSize: 17,
@@ -666,6 +831,78 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
+    color: Colors.text,
+  },
+  socialHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  addSocialBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accentBlue,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.15)',
+  },
+  addSocialBtnDisabled: {
+    opacity: 0.4,
+  },
+  socialPickerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.text,
+    paddingBottom: 8,
+  },
+  socialPickerList: {
+    maxHeight: 360,
+  },
+  socialDropdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+  },
+  socialDropdownText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  socialPickerCancel: {
+    marginTop: 6,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  socialEmpty: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.textSecondary,
+  },
+  socialEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  socialEditLabel: {
+    width: 78,
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  socialEditInput: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#A8B59A',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    fontSize: 14,
     color: Colors.text,
   },
   input: {

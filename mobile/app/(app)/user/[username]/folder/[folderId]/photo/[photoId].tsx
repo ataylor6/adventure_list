@@ -20,8 +20,10 @@ import { SaveToWishlistModal } from '@/components/SaveToWishlistModal';
 import { MissingState } from '@/components/MissingState';
 import { UserContentHeader } from '@/components/UserContentHeader';
 import {
-  ADVENTURE_CATEGORIES,
+  categoriesForMode,
+  categoryMeta,
   type AdventureCategory,
+  type FeedMode,
 } from '@/constants/adventureFeed';
 import { openNearbyFromLocation } from '@/utils/openNearby';
 import {
@@ -87,6 +89,13 @@ export default function PhotoDetailScreen() {
     const fromFeed = posts.find((p) => p.id === data.photo.id)?.tags;
     return fromFeed ?? data.photo.tags ?? [];
   }, [data, posts]);
+
+  const photoFeedMode: FeedMode = useMemo(() => {
+    if (!data) return 'travel';
+    return posts.find((p) => p.id === data.photo.id)?.feedMode ?? 'travel';
+  }, [data, posts]);
+
+  const editCategories = categoriesForMode(photoFeedMode);
 
   if (!data) {
     return <MissingState title="Photo not found" message="This post is unavailable." />;
@@ -339,7 +348,7 @@ export default function PhotoDetailScreen() {
 
             <Text style={styles.label}>Tags</Text>
             <View style={styles.tagRow}>
-              {ADVENTURE_CATEGORIES.map((item) => {
+              {editCategories.map((item) => {
                 const active = editTags.includes(item.id);
                 return (
                   <Pressable
@@ -415,7 +424,7 @@ export default function PhotoDetailScreen() {
             {photoTags.length > 0 ? (
               <View style={styles.tagRow}>
                 {photoTags.map((tagId) => {
-                  const meta = ADVENTURE_CATEGORIES.find((c) => c.id === tagId);
+                  const meta = categoryMeta(tagId);
                   if (!meta) return null;
                   return (
                     <View key={tagId} style={styles.tagChipReadonly}>

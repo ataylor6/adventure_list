@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -14,10 +14,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AdventureCard } from '@/components/AdventureCard';
 import {
-  ADVENTURE_CATEGORIES,
+  categoriesForMode,
+  categoryMeta,
   type AdventureCategory,
 } from '@/constants/adventureFeed';
 import { Colors } from '@/constants/theme';
+import { useExploreMode } from '@/context/ExploreModeContext';
 import { useFeed } from '@/context/FeedContext';
 
 type FeedScope = 'new' | 'friends';
@@ -46,11 +48,20 @@ function LeafBackdrop() {
 
 export default function HomeScreen() {
   const { posts, user, travelCompanions } = useFeed();
+  const { mode } = useExploreMode();
   const [selectedTags, setSelectedTags] = useState<AdventureCategory[]>([]);
   const [scope, setScope] = useState<FeedScope>('new');
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuTop, setMenuTop] = useState(0);
   const dropdownRef = useRef<RNView>(null);
+
+  const modeCategories = categoriesForMode(mode);
+
+  useEffect(() => {
+    setSelectedTags([]);
+    setScope('new');
+    setMenuOpen(false);
+  }, [mode]);
 
   const openMenu = () => {
     dropdownRef.current?.measureInWindow((_x, y, _width, height) => {
@@ -62,6 +73,7 @@ export default function HomeScreen() {
   const filtered = useMemo(() => {
     const companionSet = new Set(travelCompanions.map((u) => u.toLowerCase()));
     return posts.filter((p) => {
+      if ((p.feedMode ?? 'travel') !== mode) return false;
       if (scope === 'friends' && !companionSet.has(p.username.toLowerCase())) {
         return false;
       }
@@ -73,23 +85,24 @@ export default function HomeScreen() {
       }
       return true;
     });
-  }, [posts, selectedTags, scope, travelCompanions]);
+  }, [posts, selectedTags, scope, travelCompanions, mode]);
 
   const categorySummary =
     selectedTags.length === 0
       ? 'All categories'
       : selectedTags.length === 1
-        ? (ADVENTURE_CATEGORIES.find((c) => c.id === selectedTags[0])?.label ??
-          '1 category')
+        ? (categoryMeta(selectedTags[0])?.label ?? '1 category')
         : `${selectedTags.length} categories`;
 
   const emptyLabel =
     selectedTags.length === 0
       ? scope === 'friends'
         ? 'friend'
-        : 'adventures'
+        : mode === 'local'
+          ? 'local plans'
+          : 'adventures'
       : selectedTags
-          .map((id) => ADVENTURE_CATEGORIES.find((c) => c.id === id)?.label ?? id)
+          .map((id) => categoryMeta(id)?.label ?? id)
           .join(', ')
           .toLowerCase();
 
@@ -104,6 +117,10 @@ export default function HomeScreen() {
       <LeafBackdrop />
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.filters}>
+          <View style={styles.modeTitleRow}>
+            <Text style={styles.modeTitle}>{mode === 'local' ? 'Local' : 'Travel'}</Text>
+          </View>
+
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -168,7 +185,7 @@ export default function HomeScreen() {
                     ? 'Your feed is empty'
                     : scope === 'friends' && travelCompanions.length === 0
                       ? 'No travel companions yet'
-                      : `No ${emptyLabel} adventures`}
+                      : `No ${emptyLabel}`}
                 </Text>
                 <Text style={styles.emptyBody}>
                   {posts.length === 0
@@ -195,7 +212,9 @@ export default function HomeScreen() {
             onPress={(e) => e.stopPropagation()}
           >
             <View style={styles.menuHeader}>
-              <Text style={styles.menuTitle}>Categories</Text>
+              <Text style={styles.menuTitle}>
+                {mode === 'local' ? 'Local categories' : 'Travel categories'}
+              </Text>
               {selectedTags.length > 0 ? (
                 <Pressable onPress={() => setSelectedTags([])} hitSlop={8}>
                   <Text style={styles.clearText}>Clear</Text>
@@ -203,7 +222,7 @@ export default function HomeScreen() {
               ) : null}
             </View>
             <ScrollView style={styles.menuList} bounces={false}>
-              {ADVENTURE_CATEGORIES.map((item) => {
+              {modeCategories.map((item) => {
                 const checked = selectedTags.includes(item.id);
                 return (
                   <Pressable
@@ -249,6 +268,15 @@ const styles = StyleSheet.create({
   filters: {
     gap: 6,
     paddingBottom: 6,
+  },
+  modeTitleRow: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+  },
+  modeTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.text,
   },
   scopeRow: {
     paddingHorizontal: 16,
